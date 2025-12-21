@@ -1,32 +1,111 @@
-# Prerequisites
-*.d
+# Build directories
+build/
+cmake-build-*/
+out/
+bin/
+lib/
 
-# Compiled Object files
-*.slo
-*.lo
+# Compiled files
 *.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
+*.a
 *.so
 *.dylib
 *.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
 *.exe
-*.out
-*.app
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+
+# IDE and editor files
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+*~
+.DS_Store
+*.code-workspace
+
+# Models (can be large)
+models/*.bin
+models/*.ggml
+models/*.onnx
+models/*.pt
+models/*.pth
+!models/.gitkeep
+
+# Test outputs
+tests/data/output/
+*.wav
+*.flac
+*.mp3
+*.mp4
+!tests/data/fixtures/*.wav
+!tests/data/fixtures/*.flac
+
+# Coverage reports
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Profiling data
+*.prof
+callgrind.out.*
+perf.data*
+
+# Log files
+*.log
+logs/
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux specific
+*~
+.directory
+
+# Windows specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+
+# Package managers
+.conan/
+vcpkg_installed/
+
+# Documentation build
+docs/_build/
+docs/html/
+docs/latex/
+
+# Python (if any scripts)
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# Backup files
+*.backup
+*~
+
+# Core dumps
+core
+core.*
