@@ -13,6 +13,7 @@
 #include "utils/signal_generator.h"
 #include "utils/logger.h"
 #include "audio/audio_capture_device.h"
+#include "audio/audio_processor.h"
 
 #include <atomic>
 #include <csignal>
@@ -34,12 +35,16 @@ void print_usage(const char* program_name) {
     std::cout << "    --sample-rate RATE    Sample rate in Hz (default: 48000)\n";
     std::cout << "    --channels NUM        Number of channels: 1=mono, 2=stereo (default: 1)\n";
     std::cout << "    --compression LEVEL   FLAC compression level 0-8 (default: 5)\n";
+    std::cout << "    --enable-processing   Enable audio processing (normalize + high-pass filter)\n";
+    std::cout << "    --normalize           Enable volume normalization\n";
+    std::cout << "    --highpass FREQ       Enable high-pass filter at FREQ Hz (default: 80)\n";
     std::cout << "\nExamples:\n";
     std::cout << "  " << program_name << " --list-devices\n";
     std::cout << "  " << program_name << " --test-wav test.wav\n";
     std::cout << "  " << program_name << " --record -o recording.wav -t 10\n";
     std::cout << "  " << program_name << " --record -o recording.flac -f flac -t 30\n";
-    std::cout << "  " << program_name << " --record -d 1 -o output.wav --channels 2\n";
+    std::cout << "  " << program_name << " --record -o output.wav --enable-processing -t 20\n";
+    std::cout << "  " << program_name << " --record -o clean.flac --normalize --highpass 100\n";
 }
 
 int generate_test_wav(const std::string& filename) {
@@ -115,7 +120,8 @@ void signal_handler(int signal) {
 
 int record_audio(int device_id, int duration, const std::string& output_file,
                  int sample_rate, int channels, const std::string& format,
-                 int compression_level) {
+                 int compression_level, bool enable_normalize, bool enable_highpass,
+                 float highpass_freq) {
     using namespace ffvoice;
 
     std::cout << "Recording audio:\n";
@@ -127,6 +133,19 @@ int record_audio(int device_id, int duration, const std::string& output_file,
     if (format == "flac") {
         std::cout << "  Compression: level " << compression_level << "\n";
     }
+
+    // Audio processing
+    bool has_processing = enable_normalize || enable_highpass;
+    if (has_processing) {
+        std::cout << "  Audio processing: enabled\n";
+        if (enable_normalize) {
+            std::cout << "    - Volume normalization\n";
+        }
+        if (enable_highpass) {
+            std::cout << "    - High-pass filter (" << highpass_freq << " Hz)\n";
+        }
+    }
+
     std::cout << "  Output: " << output_file << "\n\n";
 
     // Open output file based on format
@@ -152,6 +171,30 @@ int record_audio(int device_id, int duration, const std::string& output_file,
         return 1;
     }
 
+    // Setup audio processing chain
+    std::unique_ptr<AudioProcessorChain> processor_chain;
+    if (has_processing) {
+        processor_chain = std::make_unique<AudioProcessorChain>();
+
+        if (enable_highpass) {
+            processor_chain->AddProcessor(
+                std::make_unique<HighPassFilter>(highpass_freq)
+            );
+        }
+
+        if (enable_normalize) {
+            processor_chain->AddProcessor(
+                std::make_unique<VolumeNormalizer>()
+            );
+        }
+
+        // Initialize the processor chain
+        if (!processor_chain->Initialize(sample_rate, channels)) {
+            std::cerr << "Failed to initialize audio processing\n";
+            return 1;
+        }
+    }
+
     // Open audio device
     AudioCaptureDevice capture;
     if (!capture.Open(device_id, sample_rate, channels, 256)) {
@@ -164,12 +207,33 @@ int record_audio(int device_id, int duration, const std::string& output_file,
 
     size_t total_samples = 0;
 
+    // Buffer for audio processing (if enabled)
+    std::vector<int16_t> process_buffer;
+    if (has_processing) {
+        process_buffer.resize(256 * channels * 4);  // Large enough buffer
+    }
+
     // Start capturing with format-specific callback
     bool success = capture.Start([&](const int16_t* samples, size_t num_samples) {
+        // Apply audio processing if enabled
+        const int16_t* processed_samples = samples;
+        if (has_processing && processor_chain) {
+            // Copy to buffer for in-place processing
+            if (process_buffer.size() < num_samples) {
+                process_buffer.resize(num_samples);
+            }
+            std::copy(samples, samples + num_samples, process_buffer.data());
+
+            // Process in-place
+            processor_chain->Process(process_buffer.data(), num_samples);
+            processed_samples = process_buffer.data();
+        }
+
+        // Write processed (or original) samples to file
         if (format == "wav") {
-            wav_writer.WriteSamples(samples, num_samples);
+            wav_writer.WriteSamples(processed_samples, num_samples);
         } else if (format == "flac") {
-            flac_writer.WriteSamples(samples, num_samples);
+            flac_writer.WriteSamples(processed_samples, num_samples);
         }
         total_samples += num_samples;
     });
@@ -266,27 +330,55 @@ int main(int argc, char* argv[]) {
         int channels = 1;
         int compression_level = 5;  // FLAC compression level (0-8)
 
+        // Audio processing options
+        bool enable_normalize = false;
+        bool enable_highpass = false;
+        float highpass_freq = 80.0f;  // Default 80 Hz
+
         // Simple argument parsing
-        for (int i = 2; i < argc; i += 2) {
+        for (int i = 2; i < argc; ++i) {
+            std::string arg = argv[i];
+
+            // Handle flags without values
+            if (arg == "--enable-processing") {
+                enable_normalize = true;
+                enable_highpass = true;
+                continue;
+            } else if (arg == "--normalize") {
+                enable_normalize = true;
+                continue;
+            }
+
+            // Handle arguments with values
             if (i + 1 >= argc) break;
 
-            std::string arg = argv[i];
             std::string value = argv[i + 1];
 
             if (arg == "-d" || arg == "--device") {
                 device_id = std::stoi(value);
+                ++i;
             } else if (arg == "-t" || arg == "--duration") {
                 duration = std::stoi(value);
+                ++i;
             } else if (arg == "-o" || arg == "--output") {
                 output_file = value;
+                ++i;
             } else if (arg == "-f" || arg == "--format") {
                 format = value;
+                ++i;
             } else if (arg == "--sample-rate") {
                 sample_rate = std::stoi(value);
+                ++i;
             } else if (arg == "--channels") {
                 channels = std::stoi(value);
+                ++i;
             } else if (arg == "--compression") {
                 compression_level = std::stoi(value);
+                ++i;
+            } else if (arg == "--highpass") {
+                enable_highpass = true;
+                highpass_freq = std::stof(value);
+                ++i;
             }
         }
 
@@ -303,7 +395,8 @@ int main(int argc, char* argv[]) {
         }
 
         return record_audio(device_id, duration, output_file, sample_rate,
-                           channels, format, compression_level);
+                           channels, format, compression_level,
+                           enable_normalize, enable_highpass, highpass_freq);
     }
 
     std::cout << "ffvoice-engine - Audio recording starting...\n";
