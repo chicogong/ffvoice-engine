@@ -49,12 +49,16 @@ pkg_check_modules(FFMPEG REQUIRED
 # PortAudio (required for audio capture)
 pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 
+# FLAC (required for FLAC encoding)
+pkg_check_modules(FLAC REQUIRED flac)
+
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${FFMPEG_INCLUDE_DIRS}
     ${PORTAUDIO_INCLUDE_DIRS}
+    ${FLAC_INCLUDE_DIRS}
 )
 
 # Source files
@@ -62,6 +66,7 @@ set(FFVOICE_CORE_SOURCES
     src/audio/audio_capture_device.cpp
     src/media/audio_file_writer.cpp
     src/media/wav_writer.cpp
+    src/media/flac_writer.cpp
     src/utils/logger.cpp
     src/utils/ring_buffer.cpp
     src/utils/signal_generator.cpp
@@ -74,12 +79,14 @@ target_link_libraries(ffvoice-core
     PUBLIC
         ${FFMPEG_LINK_LIBRARIES}
         ${PORTAUDIO_LIBRARIES}
+        ${FLAC_LIBRARIES}
 )
 
 target_link_directories(ffvoice-core
     PUBLIC
         ${FFMPEG_LIBRARY_DIRS}
         ${PORTAUDIO_LIBRARY_DIRS}
+        ${FLAC_LIBRARY_DIRS}
 )
 
 target_include_directories(ffvoice-core

@@ -6,8 +6,10 @@
 #include <iostream>
 #include <string>
 #include <cstdlib>
+#include <iomanip>
 
 #include "media/wav_writer.h"
+#include "media/flac_writer.h"
 #include "utils/signal_generator.h"
 #include "utils/logger.h"
 #include "audio/audio_capture_device.h"
@@ -25,15 +27,18 @@ void print_usage(const char* program_name) {
     std::cout << "  --list-devices, -l      List available audio devices\n";
     std::cout << "  --test-wav FILE         Generate test WAV file (440Hz sine wave)\n";
     std::cout << "  --record, -r            Record audio from microphone\n";
-    std::cout << "    -d, --device ID       Select audio device (default: 0)\n";
+    std::cout << "    -d, --device ID       Select audio device (default: auto)\n";
     std::cout << "    -o, --output FILE     Output file path (required)\n";
     std::cout << "    -t, --duration SEC    Recording duration in seconds (0 = unlimited)\n";
+    std::cout << "    -f, --format FMT      Output format: wav, flac (default: wav)\n";
     std::cout << "    --sample-rate RATE    Sample rate in Hz (default: 48000)\n";
     std::cout << "    --channels NUM        Number of channels: 1=mono, 2=stereo (default: 1)\n";
+    std::cout << "    --compression LEVEL   FLAC compression level 0-8 (default: 5)\n";
     std::cout << "\nExamples:\n";
     std::cout << "  " << program_name << " --list-devices\n";
     std::cout << "  " << program_name << " --test-wav test.wav\n";
     std::cout << "  " << program_name << " --record -o recording.wav -t 10\n";
+    std::cout << "  " << program_name << " --record -o recording.flac -f flac -t 30\n";
     std::cout << "  " << program_name << " --record -d 1 -o output.wav --channels 2\n";
 }
 
@@ -109,7 +114,8 @@ void signal_handler(int signal) {
 }
 
 int record_audio(int device_id, int duration, const std::string& output_file,
-                 int sample_rate, int channels) {
+                 int sample_rate, int channels, const std::string& format,
+                 int compression_level) {
     using namespace ffvoice;
 
     std::cout << "Recording audio:\n";
@@ -117,11 +123,31 @@ int record_audio(int device_id, int duration, const std::string& output_file,
     std::cout << "  Sample rate: " << sample_rate << " Hz\n";
     std::cout << "  Channels: " << channels << "\n";
     std::cout << "  Duration: " << (duration == 0 ? "unlimited" : std::to_string(duration) + "s") << "\n";
+    std::cout << "  Format: " << format << "\n";
+    if (format == "flac") {
+        std::cout << "  Compression: level " << compression_level << "\n";
+    }
     std::cout << "  Output: " << output_file << "\n\n";
 
-    // Open WAV file
-    WavWriter writer;
-    if (!writer.Open(output_file, sample_rate, channels, 16)) {
+    // Open output file based on format
+    WavWriter wav_writer;
+    FlacWriter flac_writer;
+    bool file_opened = false;
+
+    if (format == "wav") {
+        if (wav_writer.Open(output_file, sample_rate, channels, 16)) {
+            file_opened = true;
+        }
+    } else if (format == "flac") {
+        if (flac_writer.Open(output_file, sample_rate, channels, 16, compression_level)) {
+            file_opened = true;
+        }
+    } else {
+        std::cerr << "Unsupported format: " << format << "\n";
+        return 1;
+    }
+
+    if (!file_opened) {
         std::cerr << "Failed to open output file: " << output_file << "\n";
         return 1;
     }
@@ -138,9 +164,13 @@ int record_audio(int device_id, int duration, const std::string& output_file,
 
     size_t total_samples = 0;
 
-    // Start capturing
+    // Start capturing with format-specific callback
     bool success = capture.Start([&](const int16_t* samples, size_t num_samples) {
-        writer.WriteSamples(samples, num_samples);
+        if (format == "wav") {
+            wav_writer.WriteSamples(samples, num_samples);
+        } else if (format == "flac") {
+            flac_writer.WriteSamples(samples, num_samples);
+        }
         total_samples += num_samples;
     });
 
@@ -175,13 +205,25 @@ int record_audio(int device_id, int duration, const std::string& output_file,
     // Stop and cleanup
     capture.Stop();
     capture.Close();
-    writer.Close();
+
+    if (format == "wav") {
+        wav_writer.Close();
+    } else if (format == "flac") {
+        flac_writer.Close();
+    }
 
     double duration_sec = static_cast<double>(total_samples) / (sample_rate * channels);
     std::cout << "\nRecording complete!\n";
     std::cout << "  Captured: " << total_samples << " samples ("
               << duration_sec << " seconds)\n";
     std::cout << "  Saved to: " << output_file << "\n";
+
+    if (format == "flac") {
+        double ratio = flac_writer.GetCompressionRatio();
+        std::cout << "  Compression ratio: " << std::fixed << std::setprecision(2)
+                  << ratio << "x\n";
+    }
+
     std::cout << "\nPlay with: afplay " << output_file << "\n";
 
     return 0;
@@ -219,8 +261,10 @@ int main(int argc, char* argv[]) {
         int device_id = -1;  // -1 = default device
         int duration = 0;    // 0 = unlimited
         std::string output_file;
+        std::string format = "wav";  // default format
         int sample_rate = 48000;
         int channels = 1;
+        int compression_level = 5;  // FLAC compression level (0-8)
 
         // Simple argument parsing
         for (int i = 2; i < argc; i += 2) {
@@ -235,10 +279,14 @@ int main(int argc, char* argv[]) {
                 duration = std::stoi(value);
             } else if (arg == "-o" || arg == "--output") {
                 output_file = value;
+            } else if (arg == "-f" || arg == "--format") {
+                format = value;
             } else if (arg == "--sample-rate") {
                 sample_rate = std::stoi(value);
             } else if (arg == "--channels") {
                 channels = std::stoi(value);
+            } else if (arg == "--compression") {
+                compression_level = std::stoi(value);
             }
         }
 
@@ -248,7 +296,14 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        return record_audio(device_id, duration, output_file, sample_rate, channels);
+        // Auto-detect format from file extension if not specified explicitly
+        if (format == "wav" && output_file.size() > 5 &&
+            output_file.substr(output_file.size() - 5) == ".flac") {
+            format = "flac";
+        }
+
+        return record_audio(device_id, duration, output_file, sample_rate,
+                           channels, format, compression_level);
     }
 
     std::cout << "ffvoice-engine - Audio recording starting...\n";
