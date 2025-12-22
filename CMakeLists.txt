@@ -47,8 +47,10 @@ include_directories(
 set(FFVOICE_CORE_SOURCES
     src/audio/audio_capture_device.cpp
     src/media/audio_file_writer.cpp
+    src/media/wav_writer.cpp
     src/utils/logger.cpp
     src/utils/ring_buffer.cpp
+    src/utils/signal_generator.cpp
 )
 
 # Core library
