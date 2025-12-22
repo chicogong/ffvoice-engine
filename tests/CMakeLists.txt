@@ -36,12 +36,12 @@ include_directories(
 # Test source files
 set(TEST_SOURCES
     test_main.cpp
-    # Add individual test files here as they are created
-    # audio/test_audio_capture.cpp
-    # audio/test_audio_playback.cpp
-    # processing/test_resampler.cpp
-    # processing/test_codec.cpp
-    # processing/test_vad.cpp
+    unit/test_wav_writer.cpp
+    unit/test_signal_generator.cpp
+    # Add more test files as they are created
+    # unit/test_audio_capture.cpp
+    # unit/test_audio_file_writer.cpp
+    # unit/test_ring_buffer.cpp
     # integration/test_audio_pipeline.cpp
 )
 
@@ -54,7 +54,7 @@ target_link_libraries(ffvoice_tests
     gtest_main
     gmock
     gmock_main
-    # ffvoice_engine  # Link to main library when available
+    ffvoice-core  # Link to core library
 )
 
 # Compiler options for tests

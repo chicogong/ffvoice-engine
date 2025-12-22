@@ -16,14 +16,18 @@ ffvoice-engine 是一个高性能的音频处理引擎，专注于实时音频�
 
 ## 🏗️ 当前状态
 
-**Milestone 1**: 基础音频采集和文件保存 (进行中)
+**Milestone 1**: 基础音频采集和文件保存 (进行中 - 50%)
 
 - [x] 项目骨架搭建
 - [x] CMake 构建系统
 - [x] CLI 参数框架
+- [x] **WAV 文件写入** (手写 RIFF 格式)
+- [x] **音频信号生成器** (正弦波、静音、白噪声)
+- [x] VSCode 开发环境配置
+- [x] Google Test 测试框架集成
 - [ ] 音频采集实现（RtAudio）
-- [ ] WAV/FLAC 文件写入（FFmpeg）
-- [ ] 基础单元测试
+- [ ] 单元测试覆盖
+- [ ] FLAC 格式支持（FFmpeg）
 
 ## 🚀 快速开始
 
@@ -52,6 +56,12 @@ make -j$(nproc)
 # 查看帮助
 ./build/ffvoice --help
 
+# 生成测试 WAV 文件（440Hz A4 音符，3秒）
+./build/ffvoice --test-wav test.wav
+
+# 播放测试文件
+afplay test.wav
+
 # 列出音频设备（待实现）
 ./build/ffvoice --list-devices
 
@@ -67,21 +77,32 @@ ffvoice-engine/
 ├── include/ffvoice/        # 公共头文件
 │   └── types.h             # 核心类型定义
 ├── src/                    # 源代码
-│   ├── audio/              # 音频采集模块
+│   ├── audio/              # 音频采集模块（待实现）
 │   ├── media/              # 媒体编码/封装
+│   │   ├── wav_writer.*    # ✅ WAV 文件写入器
+│   │   └── audio_file_writer.* # FFmpeg 封装器（待实现）
 │   └── utils/              # 工具类
+│       ├── signal_generator.* # ✅ 音频信号生成
+│       └── logger.*        # 日志工具
 ├── apps/cli/               # CLI 应用
+│   └── main.cpp            # ✅ 支持 --test-wav
 ├── tests/                  # 单元测试
+│   ├── unit/               # 单元测试（待完善）
+│   ├── mocks/              # Mock 对象
+│   └── fixtures/           # 测试夹具
 ├── models/                 # AI 模型文件
 └── scripts/                # 辅助脚本
 ```
 
 ## 🛣️ 路线图
 
-### Milestone 1: 基础录制 (当前)
-- 音频采集（RtAudio）
-- WAV/FLAC 保存（FFmpeg）
-- CLI 接口
+### Milestone 1: 基础录制 (当前 - 50% 完成)
+- [x] WAV 文件写入（手写 RIFF 格式）
+- [x] 音频信号生成器（测试用）
+- [x] CLI 基础框架
+- [ ] 音频采集（RtAudio 集成）
+- [ ] 单元测试覆盖
+- [ ] FLAC 保存（FFmpeg）
 
 ### Milestone 2: 音频处理
 - RNNoise 降噪
@@ -111,9 +132,30 @@ ffvoice-engine/
 ### 测试
 
 ```bash
-cmake .. -DBUILD_TESTS=ON
+# 配置并编译测试
+cmake .. -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+make -j4
+
+# 运行所有测试
 make test
+
+# 运行单个测试（详细输出）
+./build/tests/ffvoice_tests --gtest_filter=WavWriter*
 ```
+
+### 已实现功能
+
+#### WavWriter - WAV 文件写入器
+- 手写 RIFF/WAV 格式实现
+- 支持 PCM 16-bit 音频
+- 支持 mono/stereo
+- 可调采样率（默认 48kHz）
+
+#### SignalGenerator - 音频信号生成器
+- 正弦波生成（可调频率、时长、振幅）
+- 静音生成
+- 白噪声生成
+- 用于测试和调试
 
 ## 📄 许可证
 
