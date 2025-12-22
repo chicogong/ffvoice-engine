@@ -8,6 +8,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Set architecture for macOS (use native architecture)
+if(APPLE)
+    set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "macOS architecture" FORCE)
+endif()
+
 # Build options
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_EXAMPLES "Build examples" ON)
@@ -19,7 +24,12 @@ if(MSVC)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic)
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
-        add_compile_options(-O3 -march=native)
+        # Use -march=native only on x86_64, not on ARM
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+            add_compile_options(-O3 -march=native)
+        else()
+            add_compile_options(-O3)
+        endif()
     elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
         add_compile_options(-g -O0)
     endif()
@@ -36,11 +46,15 @@ pkg_check_modules(FFMPEG REQUIRED
     libswresample
 )
 
+# PortAudio (required for audio capture)
+pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${FFMPEG_INCLUDE_DIRS}
+    ${PORTAUDIO_INCLUDE_DIRS}
 )
 
 # Source files
@@ -59,11 +73,13 @@ add_library(ffvoice-core STATIC ${FFVOICE_CORE_SOURCES})
 target_link_libraries(ffvoice-core
     PUBLIC
         ${FFMPEG_LINK_LIBRARIES}
+        ${PORTAUDIO_LIBRARIES}
 )
 
 target_link_directories(ffvoice-core
     PUBLIC
         ${FFMPEG_LIBRARY_DIRS}
+        ${PORTAUDIO_LIBRARY_DIRS}
 )
 
 target_include_directories(ffvoice-core
