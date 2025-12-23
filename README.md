@@ -10,13 +10,13 @@ ffvoice-engine 是一个高性能的音频处理引擎，专注于实时音频�
 
 - ✅ **实时音频采集** - 低延迟麦克风/系统声音捕获 (PortAudio)
 - ✅ **多格式输出** - WAV、FLAC 无损压缩
-- ⏳ **音频增强处理** - 降噪、回声消除、自动增益
+- ✅ **音频增强处理** - 音量归一化、高通滤波
 - ⏳ **离线语音识别** - whisper.cpp 集成
 - ⏳ **实时字幕生成** - 边录边转写
 
 ## 🏗️ 当前状态
 
-**Milestone 1**: 基础音频采集和文件保存 (✨ 85% 完成)
+**Milestone 1**: 基础音频采集和文件保存 (✨ 95% 完成)
 
 - [x] 项目骨架搭建
 - [x] CMake 构建系统
@@ -26,6 +26,7 @@ ffvoice-engine 是一个高性能的音频处理引擎，专注于实时音频�
 - [x] **音频采集** (PortAudio, 实时流式捕获)
 - [x] **音频信号生成器** (正弦波、静音、白噪声)
 - [x] **设备枚举与选择**
+- [x] **音频处理模块** (音量归一化 + 高通滤波)
 - [x] **单元测试** (39 个测试用例)
 - [x] VSCode 开发环境配置
 - [x] Google Test 测试框架集成
@@ -85,6 +86,18 @@ make -j$(nproc)
 # 选择特定设备录制立体声
 ./build/ffvoice --record -d 1 -o stereo.wav --channels 2 -t 20
 
+# 启用音频处理（音量归一化 + 高通滤波）
+./build/ffvoice --record -o clean.wav --enable-processing -t 10
+
+# 仅启用音量归一化
+./build/ffvoice --record -o normalized.wav --normalize -t 10
+
+# 自定义高通滤波频率（去除 100Hz 以下噪声）
+./build/ffvoice --record -o filtered.flac --highpass 100 -t 20
+
+# 组合：FLAC + 音频处理
+./build/ffvoice --record -o studio.flac --normalize --highpass 80 -t 30
+
 # 播放录音
 afplay recording.wav   # 或 recording.flac
 ```
@@ -97,8 +110,9 @@ ffvoice-engine/
 ├── include/ffvoice/        # 公共头文件
 │   └── types.h             # 核心类型定义
 ├── src/                    # 源代码
-│   ├── audio/              # 音频采集模块
-│   │   └── audio_capture_device.* # ✅ PortAudio 采集器
+│   ├── audio/              # 音频采集与处理模块
+│   │   ├── audio_capture_device.* # ✅ PortAudio 采集器
+│   │   └── audio_processor.*      # ✅ 音频处理框架
 │   ├── media/              # 媒体编码/封装
 │   │   ├── wav_writer.*    # ✅ WAV 文件写入器
 │   │   ├── flac_writer.*   # ✅ FLAC 无损压缩
@@ -119,11 +133,12 @@ ffvoice-engine/
 
 ## 🛣️ 路线图
 
-### Milestone 1: 基础录制 (当前 - ✨ 85% 完成)
+### Milestone 1: 基础录制 (当前 - ✨ 95% 完成)
 - [x] WAV 文件写入（手写 RIFF 格式）
 - [x] FLAC 无损压缩（libFLAC）
 - [x] 音频采集（PortAudio 集成）
 - [x] 音频信号生成器（测试用）
+- [x] 音频处理框架（音量归一化 + 高通滤波）
 - [x] CLI 完整功能（设备、格式、参数）
 - [x] 单元测试覆盖（39 个测试用例）
 - [ ] WebRTC APM 音频处理（可选）
@@ -197,6 +212,34 @@ make test
 - 静音生成
 - 白噪声生成
 - 用于测试和调试
+
+#### AudioProcessor - 音频处理框架
+**架构设计**：
+- 抽象接口 `AudioProcessor` 支持模块化扩展
+- `AudioProcessorChain` 处理器链（串联多个处理器）
+- 实时处理（在采集回调中）
+- 就地处理（in-place）提高效率
+
+**VolumeNormalizer - 音量归一化**：
+- 基于 RMS 的自动增益控制
+- 平滑增益调整（exponential moving average）
+  - Attack time: 0.1s（增益提升速度）
+  - Release time: 0.3s（增益下降速度）
+- 目标电平：0.3（可配置 0.0-1.0）
+- 增益范围：0.1x - 10.0x
+- 防止削波和保持一致响度
+
+**HighPassFilter - 高通滤波器**：
+- 一阶 IIR 滤波器实现
+- 去除低频噪声（呼吸声、麦克风碰撞、环境噪音）
+- 默认截止频率：80Hz（可配置）
+- 每通道独立状态（支持立体声）
+- 滤波器公式：`y[n] = α(y[n-1] + x[n] - x[n-1])`
+
+**性能**：
+- 实时处理（零额外延迟）
+- 低 CPU 开销
+- 支持 mono/stereo
 
 #### 测试覆盖
 - 39 个单元测试用例
