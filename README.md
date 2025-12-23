@@ -1,6 +1,17 @@
 # ffvoice-engine
 
-> 🎙️ A low-latency C++ voice engine with FFmpeg filters and offline ASR
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
+[![CMake](https://img.shields.io/badge/CMake-3.20+-064F8C.svg?logo=cmake)](https://cmake.org/)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20|%20Linux%20|%20Windows-lightgrey.svg)]()
+[![GitHub stars](https://img.shields.io/github/stars/chicogong/ffvoice-engine?style=social)](https://github.com/chicogong/ffvoice-engine/stargazers)
+
+[![FFmpeg](https://img.shields.io/badge/FFmpeg-4.4+-007808.svg?logo=ffmpeg)](https://ffmpeg.org/)
+[![PortAudio](https://img.shields.io/badge/PortAudio-19.7+-8B0000.svg)](http://www.portaudio.com/)
+[![FLAC](https://img.shields.io/badge/FLAC-1.5+-orange.svg)](https://xiph.org/flac/)
+[![Google Test](https://img.shields.io/badge/Google%20Test-1.14+-4285F4.svg?logo=google)](https://github.com/google/googletest)
+
+> A low-latency C++ voice engine with FFmpeg filters and offline ASR
 
 ## 📋 项目介绍
 
