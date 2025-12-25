@@ -73,6 +73,17 @@ set(FFVOICE_CORE_SOURCES
     src/utils/signal_generator.cpp
 )
 
+# WebRTC APM (conditional)
+if(ENABLE_WEBRTC_APM)
+    message(STATUS "WebRTC APM: Enabled")
+    add_compile_definitions(ENABLE_WEBRTC_APM)
+    list(APPEND FFVOICE_CORE_SOURCES
+        src/audio/webrtc_processor.cpp
+    )
+else()
+    message(STATUS "WebRTC APM: Disabled (use -DENABLE_WEBRTC_APM=ON to enable)")
+endif()
+
 # Core library
 add_library(ffvoice-core STATIC ${FFVOICE_CORE_SOURCES})
 
