@@ -52,6 +52,41 @@ pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 # FLAC (required for FLAC encoding)
 pkg_check_modules(FLAC REQUIRED flac)
 
+# WebRTC APM (optional)
+if(ENABLE_WEBRTC_APM)
+    pkg_check_modules(WEBRTC_APM webrtc-audio-processing-1)
+
+    if(NOT WEBRTC_APM_FOUND)
+        message(STATUS "")
+        message(STATUS "========================================")
+        message(STATUS "WebRTC APM library not found!")
+        message(STATUS "========================================")
+        message(STATUS "")
+        message(STATUS "To install webrtc-audio-processing:")
+        message(STATUS "")
+        message(STATUS "Linux (Ubuntu/Debian):")
+        message(STATUS "  sudo apt-get install webrtc-audio-processing-dev")
+        message(STATUS "")
+        message(STATUS "macOS/Linux (from source):")
+        message(STATUS "  git clone https://gitlab.freedesktop.org/pulseaudio/webrtc-audio-processing.git")
+        message(STATUS "  cd webrtc-audio-processing")
+        message(STATUS "  meson setup build --prefix=/usr/local")
+        message(STATUS "  meson compile -C build")
+        message(STATUS "  sudo meson install -C build")
+        message(STATUS "")
+        message(STATUS "Or disable WebRTC APM and use other processors:")
+        message(STATUS "  cmake .. -DENABLE_WEBRTC_APM=OFF")
+        message(STATUS "")
+        message(STATUS "========================================")
+        message(FATAL_ERROR "WebRTC APM library required but not found")
+    endif()
+
+    message(STATUS "WebRTC APM found in system:")
+    message(STATUS "  Include dirs: ${WEBRTC_APM_INCLUDE_DIRS}")
+    message(STATUS "  Libraries: ${WEBRTC_APM_LIBRARIES}")
+    message(STATUS "  Library dirs: ${WEBRTC_APM_LIBRARY_DIRS}")
+endif()
+
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -60,6 +95,10 @@ include_directories(
     ${PORTAUDIO_INCLUDE_DIRS}
     ${FLAC_INCLUDE_DIRS}
 )
+
+if(ENABLE_WEBRTC_APM AND WEBRTC_APM_FOUND)
+    include_directories(${WEBRTC_APM_INCLUDE_DIRS})
+endif()
 
 # Source files
 set(FFVOICE_CORE_SOURCES
@@ -94,12 +133,24 @@ target_link_libraries(ffvoice-core
         ${FLAC_LIBRARIES}
 )
 
+if(ENABLE_WEBRTC_APM AND WEBRTC_APM_FOUND)
+    target_link_libraries(ffvoice-core
+        PUBLIC ${WEBRTC_APM_LIBRARIES}
+    )
+endif()
+
 target_link_directories(ffvoice-core
     PUBLIC
         ${FFMPEG_LIBRARY_DIRS}
         ${PORTAUDIO_LIBRARY_DIRS}
         ${FLAC_LIBRARY_DIRS}
 )
+
+if(ENABLE_WEBRTC_APM AND WEBRTC_APM_FOUND)
+    target_link_directories(ffvoice-core
+        PUBLIC ${WEBRTC_APM_LIBRARY_DIRS}
+    )
+endif()
 
 target_include_directories(ffvoice-core
     PUBLIC
