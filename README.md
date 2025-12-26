@@ -27,7 +27,7 @@ ffvoice-engine 是一个高性能的音频处理引擎，专注于实时音频�
 
 ## 🏗️ 当前状态
 
-**Milestone 1**: 基础音频采集和文件保存 (✨ 95% 完成)
+**Milestone 1**: 基础音频采集和文件保存 (✨ 97% 完成)
 
 - [x] 项目骨架搭建
 - [x] CMake 构建系统
@@ -41,7 +41,7 @@ ffvoice-engine 是一个高性能的音频处理引擎，专注于实时音频�
 - [x] **单元测试** (39 个测试用例)
 - [x] VSCode 开发环境配置
 - [x] Google Test 测试框架集成
-- [ ] WebRTC APM 音频处理 (可选)
+- [x] **WebRTC APM 框架** (可选，需外部库)
 
 ## 🚀 快速开始
 
@@ -52,6 +52,7 @@ ffvoice-engine 是一个高性能的音频处理引擎，专注于实时音频�
 - FFmpeg 4.4+ (libavcodec, libavformat, libavutil, libswresample)
 - PortAudio 19.7+ (音频采集)
 - FLAC 1.5+ (无损压缩)
+- **WebRTC APM** (可选，需手动安装，参见下方说明)
 
 macOS 安装：
 ```bash
@@ -65,11 +66,46 @@ sudo apt-get install cmake build-essential \
   portaudio19-dev libflac-dev
 ```
 
+#### WebRTC APM 安装（可选）
+
+WebRTC APM 提供高级音频处理功能（降噪、自动增益、VAD），但需要手动安装：
+
+**Linux (Ubuntu/Debian)**:
+```bash
+sudo apt-get install webrtc-audio-processing-dev
+```
+
+**从源代码编译** (Linux/macOS):
+```bash
+# 安装 meson 构建系统
+brew install meson  # macOS
+# 或
+sudo apt-get install meson  # Linux
+
+# 编译安装 WebRTC APM
+git clone https://gitlab.freedesktop.org/pulseaudio/webrtc-audio-processing.git
+cd webrtc-audio-processing
+git checkout v1.3
+meson setup build --prefix=/usr/local
+meson compile -C build
+sudo meson install -C build
+```
+
+**注意**: macOS Apple Silicon (ARM64) 用户可能遇到编译问题，建议使用预编译包或跳过此可选功能。
+
 ### 编译
 
+**标准编译** (不含 WebRTC APM):
 ```bash
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+```
+
+**启用 WebRTC APM** (需先安装库):
+```bash
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_WEBRTC_APM=ON
 make -j$(nproc)
 ```
 
@@ -123,7 +159,8 @@ ffvoice-engine/
 ├── src/                    # 源代码
 │   ├── audio/              # 音频采集与处理模块
 │   │   ├── audio_capture_device.* # ✅ PortAudio 采集器
-│   │   └── audio_processor.*      # ✅ 音频处理框架
+│   │   ├── audio_processor.*      # ✅ 音频处理框架
+│   │   └── webrtc_processor.*     # ✅ WebRTC APM 框架 (可选)
 │   ├── media/              # 媒体编码/封装
 │   │   ├── wav_writer.*    # ✅ WAV 文件写入器
 │   │   ├── flac_writer.*   # ✅ FLAC 无损压缩
@@ -144,7 +181,7 @@ ffvoice-engine/
 
 ## 🛣️ 路线图
 
-### Milestone 1: 基础录制 (当前 - ✨ 95% 完成)
+### Milestone 1: 基础录制 (✨ 97% 完成)
 - [x] WAV 文件写入（手写 RIFF 格式）
 - [x] FLAC 无损压缩（libFLAC）
 - [x] 音频采集（PortAudio 集成）
@@ -152,7 +189,7 @@ ffvoice-engine/
 - [x] 音频处理框架（音量归一化 + 高通滤波）
 - [x] CLI 完整功能（设备、格式、参数）
 - [x] 单元测试覆盖（39 个测试用例）
-- [ ] WebRTC APM 音频处理（可选）
+- [x] WebRTC APM 框架（可选，需外部库集成）
 
 ### Milestone 2: 音频处理
 - RNNoise 降噪
