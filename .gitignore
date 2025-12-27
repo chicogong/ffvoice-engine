@@ -116,3 +116,4 @@ venv/
 # Core dumps
 core
 core.*
+.cache/
