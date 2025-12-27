@@ -1,0 +1,37 @@
+{
+    "recommendations": [
+        // C/C++ 开发
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cmake-tools",
+        "twxs.cmake",
+
+        // 代码格式化和质量
+        "xaver.clang-format",
+        "llvm-vs-code-extensions.vscode-clangd",
+
+        // Git
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+
+        // 文档
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint",
+        "cschlosser.doxdocgen",
+
+        // 代码片段和效率
+        "christian-kohler.path-intellisense",
+        "formulahendry.code-runner",
+        "gruntfuggly.todo-tree",
+
+        // EditorConfig
+        "editorconfig.editorconfig",
+
+        // 主题和图标（可选）
+        "pkief.material-icon-theme",
+
+        // 其他
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml"
+    ]
+}

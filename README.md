@@ -1,15 +1,35 @@
 # ffvoice-engine
 
+<!-- Build & CI Status -->
+[![CI](https://github.com/chicogong/ffvoice-engine/workflows/CI/badge.svg)](https://github.com/chicogong/ffvoice-engine/actions/workflows/ci.yml)
+[![Release](https://github.com/chicogong/ffvoice-engine/workflows/Release/badge.svg)](https://github.com/chicogong/ffvoice-engine/actions/workflows/release.yml)
+[![codecov](https://codecov.io/gh/chicogong/ffvoice-engine/branch/master/graph/badge.svg)](https://codecov.io/gh/chicogong/ffvoice-engine)
+
+<!-- License & Language -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 [![CMake](https://img.shields.io/badge/CMake-3.20+-064F8C.svg?logo=cmake)](https://cmake.org/)
-[![Platform](https://img.shields.io/badge/Platform-macOS%20|%20Linux%20|%20Windows-lightgrey.svg)]()
-[![GitHub stars](https://img.shields.io/github/stars/chicogong/ffvoice-engine?style=social)](https://github.com/chicogong/ffvoice-engine/stargazers)
 
+<!-- Platform Support -->
+[![Platform](https://img.shields.io/badge/Platform-macOS%20|%20Linux%20|%20Windows-lightgrey.svg)]()
+[![macOS](https://github.com/chicogong/ffvoice-engine/workflows/CI/badge.svg?label=macOS)](https://github.com/chicogong/ffvoice-engine/actions)
+[![Linux](https://github.com/chicogong/ffvoice-engine/workflows/CI/badge.svg?label=Linux)](https://github.com/chicogong/ffvoice-engine/actions)
+[![Windows](https://github.com/chicogong/ffvoice-engine/workflows/CI/badge.svg?label=Windows)](https://github.com/chicogong/ffvoice-engine/actions)
+
+<!-- Version & Community -->
+[![GitHub release](https://img.shields.io/github/release/chicogong/ffvoice-engine.svg)](https://github.com/chicogong/ffvoice-engine/releases)
+[![GitHub stars](https://img.shields.io/github/stars/chicogong/ffvoice-engine?style=social)](https://github.com/chicogong/ffvoice-engine/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/chicogong/ffvoice-engine?style=social)](https://github.com/chicogong/ffvoice-engine/network/members)
+
+<!-- Dependencies -->
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-4.4+-007808.svg?logo=ffmpeg)](https://ffmpeg.org/)
 [![PortAudio](https://img.shields.io/badge/PortAudio-19.7+-8B0000.svg)](http://www.portaudio.com/)
 [![FLAC](https://img.shields.io/badge/FLAC-1.5+-orange.svg)](https://xiph.org/flac/)
-[![Google Test](https://img.shields.io/badge/Google%20Test-1.14+-4285F4.svg?logo=google)](https://github.com/google/googletest)
+[![Whisper](https://img.shields.io/badge/Whisper-tiny-purple.svg)](https://github.com/ggerganov/whisper.cpp)
+
+<!-- Code Quality -->
+[![Code Style](https://img.shields.io/badge/code%20style-Google-blue.svg)](https://google.github.io/styleguide/cppguide.html)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 > A low-latency C++ voice engine with FFmpeg filters and offline ASR
 
@@ -407,10 +427,119 @@ make test
 - SignalGenerator 测试（23 个）
 - Google Test 框架
 
-## 📄 许可证
+## 🤝 贡献 / Contributing
 
-MIT License
+我们欢迎并感谢所有形式的贡献！无论是报告 bug、提出新功能、改进文档还是提交代码，都对项目有很大帮助。
 
-## 🤝 贡献
+We welcome and appreciate all forms of contributions! Whether it's reporting bugs, proposing new features, improving documentation, or submitting code.
 
-欢迎提交 Issue 和 Pull Request！
+### 如何贡献 / How to Contribute
+
+1. 🐛 **报告 Bug** - 使用 [Bug Report 模板](https://github.com/chicogong/ffvoice-engine/issues/new?template=bug_report.md)
+2. ✨ **请求功能** - 使用 [Feature Request 模板](https://github.com/chicogong/ffvoice-engine/issues/new?template=feature_request.md)
+3. 📝 **改进文档** - 提交 PR 改进 README、docs 或代码注释
+4. 💻 **提交代码** - Fork → 开发 → 测试 → PR
+
+### 开发指南 / Development Guide
+
+详细的贡献指南请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)
+
+**快速开始**:
+```bash
+# 1. Fork 并克隆仓库
+git clone https://github.com/YOUR_USERNAME/ffvoice-engine.git
+
+# 2. 创建功能分支
+git checkout -b feature/your-feature-name
+
+# 3. 进行开发并测试
+cmake -B build -DBUILD_TESTS=ON
+make -C build -j$(nproc)
+make -C build test
+
+# 4. 格式化代码
+./scripts/format.sh
+
+# 5. 提交并推送
+git commit -m "feat: add your feature"
+git push origin feature/your-feature-name
+
+# 6. 创建 Pull Request
+```
+
+### 代码规范 / Code Style
+
+- **语言**: C++20
+- **风格指南**: Google C++ Style Guide（变体）
+- **格式化工具**: clang-format（配置见 `.clang-format`）
+- **静态分析**: clang-tidy（配置见 `.clang-tidy`）
+- **提交规范**: [Conventional Commits](https://www.conventionalcommits.org/)
+
+### 行为准则 / Code of Conduct
+
+请遵守我们的 [行为准则](CODE_OF_CONDUCT.md)，营造友好和包容的社区环境。
+
+Please follow our [Code of Conduct](CODE_OF_CONDUCT.md) to maintain a welcoming and inclusive community environment.
+
+---
+
+## 📊 项目状态 / Project Status
+
+- ✅ **Milestone 1**: 基础音频采集和文件保存 - 完成
+- ✅ **Milestone 2**: 音频处理增强 (RNNoise) - 完成
+- ✅ **Milestone 3**: 离线语音识别 (Whisper ASR) - 完成
+- ⏳ **Milestone 4**: 实时语音识别 - 进行中
+
+详见 [CHANGELOG.md](CHANGELOG.md)
+
+---
+
+## 📞 支持与反馈 / Support & Feedback
+
+- 📖 **文档**: [docs/](docs/)
+- 💬 **讨论**: [GitHub Discussions](https://github.com/chicogong/ffvoice-engine/discussions)
+- 🐛 **Bug 报告**: [GitHub Issues](https://github.com/chicogong/ffvoice-engine/issues)
+- 📧 **联系**: chicogong@tencent.com
+
+---
+
+## 📄 许可证 / License
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 致谢 / Acknowledgments
+
+感谢以下开源项目：
+
+Thanks to the following open-source projects:
+
+- [FFmpeg](https://ffmpeg.org/) - 多媒体处理框架
+- [PortAudio](http://www.portaudio.com/) - 跨平台音频 I/O 库
+- [FLAC](https://xiph.org/flac/) - 无损音频压缩
+- [whisper.cpp](https://github.com/ggerganov/whisper.cpp) - OpenAI Whisper 的 C++ 实现
+- [RNNoise](https://github.com/xiph/rnnoise) - 深度学习降噪库
+- [Google Test](https://github.com/google/googletest) - C++ 测试框架
+
+---
+
+## ⭐ Star History
+
+如果这个项目对你有帮助，请考虑给我们一个 ⭐ Star!
+
+If this project helps you, please consider giving us a ⭐ Star!
+
+[![Star History Chart](https://api.star-history.com/svg?repos=chicogong/ffvoice-engine&type=Date)](https://star-history.com/#chicogong/ffvoice-engine&Date)
+
+---
+
+<p align="center">
+  Made with ❤️ by the ffvoice-engine team
+</p>
+
+<p align="center">
+  <a href="#top">⬆️ Back to Top</a>
+</p>

@@ -1,0 +1,100 @@
+---
+# ffvoice-engine C++ Static Analysis Configuration
+
+# 检查项（启用常用的高价值检查）
+Checks: >
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  google-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -bugprone-easily-swappable-parameters,
+  -cert-err58-cpp,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-macro-usage,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-union-access,
+  -cppcoreguidelines-pro-type-vararg,
+  -google-readability-braces-around-statements,
+  -google-readability-todo,
+  -modernize-use-trailing-return-type,
+  -readability-braces-around-statements,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-named-parameter,
+  -readability-uppercase-literal-suffix
+
+# 警告作为错误
+WarningsAsErrors: ''
+
+# 头文件过滤（仅检查项目代码）
+HeaderFilterRegex: '(src|include|apps|tests)/.*\.(h|hpp)$'
+
+# 检查参数配置
+CheckOptions:
+  # 命名约定
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: CamelCase
+  - key: readability-identifier-naming.MethodCase
+    value: CamelCase
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: '_'
+  - key: readability-identifier-naming.ConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConstantPrefix
+    value: 'k'
+  - key: readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+
+  # 函数长度限制
+  - key: readability-function-size.LineThreshold
+    value: '100'
+  - key: readability-function-size.StatementThreshold
+    value: '50'
+  - key: readability-function-size.BranchThreshold
+    value: '10'
+
+  # 性能检查
+  - key: performance-move-const-arg.CheckTriviallyCopyableMove
+    value: '1'
+  - key: performance-unnecessary-value-param.AllowedTypes
+    value: 'std::function;std::shared_ptr;std::unique_ptr'
+
+  # 现代化建议
+  - key: modernize-use-auto.MinTypeNameLength
+    value: '5'
+  - key: modernize-loop-convert.MinConfidence
+    value: 'reasonable'
+
+  # C++ Core Guidelines
+  - key: cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+    value: '1'
+  - key: cppcoreguidelines-avoid-do-while.IgnoreMacros
+    value: '1'
+...

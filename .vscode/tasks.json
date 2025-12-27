@@ -1,0 +1,115 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Configure (Debug)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-B",
+                "${workspaceFolder}/build",
+                "-DCMAKE_BUILD_TYPE=Debug",
+                "-DBUILD_TESTS=ON",
+                "-DENABLE_RNNOISE=ON",
+                "-DENABLE_WHISPER=ON"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Configure (Release)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-B",
+                "${workspaceFolder}/build",
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-DBUILD_TESTS=ON",
+                "-DENABLE_RNNOISE=ON",
+                "-DENABLE_WHISPER=ON"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build (Debug)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build",
+                "--config",
+                "Debug",
+                "-j",
+                "$(nproc 2>/dev/null || sysctl -n hw.ncpu)"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"],
+            "dependsOn": ["Configure (Debug)"]
+        },
+        {
+            "label": "Build (Release)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build",
+                "--config",
+                "Release",
+                "-j",
+                "$(nproc 2>/dev/null || sysctl -n hw.ncpu)"
+            ],
+            "group": "build",
+            "problemMatcher": ["$gcc"],
+            "dependsOn": ["Configure (Release)"]
+        },
+        {
+            "label": "Clean Build",
+            "type": "shell",
+            "command": "rm",
+            "args": ["-rf", "${workspaceFolder}/build"],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "ctest",
+            "args": [
+                "--test-dir",
+                "${workspaceFolder}/build",
+                "--output-on-failure"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "dependsOn": ["Build (Debug)"]
+        },
+        {
+            "label": "Format Code",
+            "type": "shell",
+            "command": "./scripts/format.sh",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Check Format",
+            "type": "shell",
+            "command": "./scripts/format-check.sh",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Linter",
+            "type": "shell",
+            "command": "./scripts/lint.sh",
+            "group": "none",
+            "problemMatcher": []
+        }
+    ]
+}

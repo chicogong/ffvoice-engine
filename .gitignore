@@ -22,7 +22,6 @@ compile_commands.json
 CTestTestfile.cmake
 
 # IDE and editor files
-.vscode/
 .idea/
 .claude/
 *.swp
@@ -30,6 +29,14 @@ CTestTestfile.cmake
 *~
 .DS_Store
 *.code-workspace
+
+# VS Code - Keep project settings, ignore user-specific files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.vscode/*.log
 
 # Models (can be large)
 models/*.bin

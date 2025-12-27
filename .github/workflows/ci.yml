@@ -1,0 +1,287 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, dev/* ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  # ==================== 代码格式检查 ====================
+  format-check:
+    name: Code Format Check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install clang-format
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format-14
+
+    - name: Check code formatting
+      run: |
+        find src apps include tests -name '*.cpp' -o -name '*.h' | \
+        xargs clang-format-14 --dry-run --Werror
+
+  # ==================== 静态分析 ====================
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          clang-tidy-14 \
+          cmake \
+          build-essential \
+          libavcodec-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libswresample-dev \
+          portaudio19-dev \
+          libflac-dev
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+          -DENABLE_RNNOISE=ON \
+          -DENABLE_WHISPER=ON
+
+    - name: Run clang-tidy
+      run: |
+        find src apps -name '*.cpp' | \
+        xargs clang-tidy-14 -p build --warnings-as-errors='*' || true
+
+  # ==================== Linux 构建和测试 ====================
+  build-linux:
+    name: Build on Linux
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+        build_type: [Debug, Release]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          build-essential \
+          libavcodec-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libswresample-dev \
+          portaudio19-dev \
+          libflac-dev
+
+    - name: Setup GCC
+      if: matrix.compiler == 'gcc'
+      run: |
+        sudo apt-get install -y gcc-11 g++-11
+        echo "CC=gcc-11" >> $GITHUB_ENV
+        echo "CXX=g++-11" >> $GITHUB_ENV
+
+    - name: Setup Clang
+      if: matrix.compiler == 'clang'
+      run: |
+        sudo apt-get install -y clang-14
+        echo "CC=clang-14" >> $GITHUB_ENV
+        echo "CXX=clang++-14" >> $GITHUB_ENV
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+          -DBUILD_TESTS=ON \
+          -DENABLE_RNNOISE=ON \
+          -DENABLE_WHISPER=ON
+
+    - name: Build
+      run: cmake --build build --config ${{matrix.build_type}} -j$(nproc)
+
+    - name: Run Tests
+      working-directory: build
+      run: ctest -C ${{matrix.build_type}} --output-on-failure
+
+    - name: Upload build artifacts
+      if: matrix.compiler == 'gcc' && matrix.build_type == 'Release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ffvoice-linux-x86_64
+        path: build/ffvoice
+
+  # ==================== macOS 构建和测试 ====================
+  build-macos:
+    name: Build on macOS
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        brew install cmake ffmpeg portaudio flac
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+          -DBUILD_TESTS=ON \
+          -DENABLE_RNNOISE=ON \
+          -DENABLE_WHISPER=ON
+
+    - name: Build
+      run: cmake --build build --config ${{matrix.build_type}} -j$(sysctl -n hw.ncpu)
+
+    - name: Run Tests
+      working-directory: build
+      run: ctest -C ${{matrix.build_type}} --output-on-failure
+
+    - name: Upload build artifacts
+      if: matrix.build_type == 'Release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ffvoice-macos-universal
+        path: build/ffvoice
+
+  # ==================== Windows 构建和测试 ====================
+  build-windows:
+    name: Build on Windows
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
+
+    - name: Install dependencies
+      run: |
+        vcpkg install ffmpeg portaudio libflac --triplet x64-windows
+
+    - name: Configure CMake
+      run: |
+        cmake -B build `
+          -DCMAKE_BUILD_TYPE=${{matrix.build_type}} `
+          -DBUILD_TESTS=ON `
+          -DENABLE_RNNOISE=ON `
+          -DENABLE_WHISPER=ON `
+          -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+    - name: Build
+      run: cmake --build build --config ${{matrix.build_type}}
+
+    - name: Run Tests
+      working-directory: build
+      run: ctest -C ${{matrix.build_type}} --output-on-failure
+
+    - name: Upload build artifacts
+      if: matrix.build_type == 'Release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ffvoice-windows-x64
+        path: build/${{matrix.build_type}}/ffvoice.exe
+
+  # ==================== 代码覆盖率 ====================
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          build-essential \
+          lcov \
+          libavcodec-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libswresample-dev \
+          portaudio19-dev \
+          libflac-dev
+
+    - name: Configure CMake with coverage
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DBUILD_TESTS=ON \
+          -DCMAKE_CXX_FLAGS="--coverage" \
+          -DCMAKE_C_FLAGS="--coverage"
+
+    - name: Build
+      run: cmake --build build -j$(nproc)
+
+    - name: Run Tests
+      working-directory: build
+      run: ctest --output-on-failure
+
+    - name: Generate coverage report
+      run: |
+        lcov --directory build --capture --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' '*/tests/*' '*/build/_deps/*' --output-file coverage.info
+        lcov --list coverage.info
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage.info
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ==================== 安全扫描 ====================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: cpp
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          build-essential \
+          libavcodec-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libswresample-dev \
+          portaudio19-dev \
+          libflac-dev
+
+    - name: Configure and Build
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build -j$(nproc)
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3

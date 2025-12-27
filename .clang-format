@@ -1,0 +1,118 @@
+---
+# ffvoice-engine C++ Code Style (Based on Google Style Guide)
+Language: Cpp
+BasedOnStyle: Google
+
+# 基本设置
+Standard: c++20
+ColumnLimit: 100
+
+# 缩进
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+IndentCaseLabels: true
+IndentPPDirectives: BeforeHash
+
+# 括号和空格
+PointerAlignment: Left
+ReferenceAlignment: Left
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# 换行
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: true
+AlwaysBreakTemplateDeclarations: Yes
+BreakBeforeBinaryOperators: None
+BreakBeforeBraces: Attach
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeColon
+BreakInheritanceList: BeforeColon
+BreakStringLiterals: true
+
+# 构造函数初始化列表
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
+
+# 命名空间
+CompactNamespaces: false
+FixNamespaceComments: true
+NamespaceIndentation: None
+
+# 注释
+ReflowComments: true
+
+# include 排序
+SortIncludes: true
+SortUsingDeclarations: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  # 项目头文件
+  - Regex:           '^"(audio|media|utils)/'
+    Priority:        1
+  # 项目公共头文件
+  - Regex:           '^"include/'
+    Priority:        2
+  # 第三方库
+  - Regex:           '^<(portaudio|FLAC|rnnoise|whisper)/'
+    Priority:        3
+  # 系统库
+  - Regex:           '^<.*\.h>'
+    Priority:        4
+  # C++ 标准库
+  - Regex:           '^<.*'
+    Priority:        5
+
+# 访问修饰符
+AccessModifierOffset: -4
+
+# 对齐
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Left
+AlignOperands: true
+AlignTrailingComments: true
+
+# 允许的风格
+AllowAllArgumentsOnNextLine: true
+AllowAllConstructorInitializersOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: false
+
+# 二进制运算符换行后的惩罚
+PenaltyBreakAssignment: 2
+PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakComment: 300
+PenaltyBreakFirstLessLess: 120
+PenaltyBreakString: 1000
+PenaltyExcessCharacter: 1000000
+PenaltyReturnTypeOnItsOwnLine: 60
+
+# 其他
+BinPackArguments: true
+BinPackParameters: true
+DerivePointerAlignment: false
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+...
