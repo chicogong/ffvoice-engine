@@ -7,7 +7,9 @@
 
 namespace ffvoice {
 
-// TODO: Implement audio file writing
-// Placeholder for now
+// Audio file writing is implemented through specialized writers:
+// - WAVWriter: Uncompressed PCM audio in WAV format
+// - FLACWriter: Lossless compressed audio in FLAC format
+// See wav_writer.h and flac_writer.h for implementations
 
 }  // namespace ffvoice

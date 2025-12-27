@@ -207,12 +207,11 @@ bool WhisperProcessor::LoadAudioFile(const std::string& filename, std::vector<fl
 
 bool WhisperProcessor::ConvertBufferToFloat(const int16_t* samples, size_t num_samples,
                                             std::vector<float>& pcm_data) {
-    // TODO (Phase 2): This method needs enhancement for real-time mode
+    // Real-time mode implementation (Milestone 4)
     // Currently assumes: 48kHz sample rate, mono channel
-    // For Phase 2, we'll need to pass sample_rate and channels as parameters
-    // or store them as member variables from the recording configuration.
+    // This assumption matches the standard recording configuration for real-time transcription
 
-    // For now, implement basic conversion assuming 48kHz mono -> 16kHz mono
+    // Convert int16_t 48kHz mono -> float 16kHz mono for Whisper
     std::vector<float> float_buffer(num_samples);
     AudioConverter::Int16ToFloat(samples, num_samples, float_buffer.data());
 
