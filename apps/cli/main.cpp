@@ -349,10 +349,11 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
             return 1;
         }
 
-        // Initialize Whisper processor
+        // Initialize Whisper processor for real-time transcription
         WhisperConfig whisper_config;
         whisper_config.language = "auto";
         whisper_config.print_progress = false;  // Don't print progress for real-time
+        whisper_config.enable_performance_metrics = true;  // Enable performance timing
         whisper_processor = std::make_unique<WhisperProcessor>(whisper_config);
 
         if (!whisper_processor->Initialize()) {
