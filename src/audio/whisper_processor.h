@@ -169,6 +169,10 @@ private:
 #ifdef ENABLE_WHISPER
     struct whisper_context* ctx_ = nullptr;
 
+    // Reusable buffers to avoid repeated allocations
+    mutable std::vector<float> conversion_buffer_;  ///< Reusable buffer for audio conversion
+    mutable std::vector<float> resample_buffer_;    ///< Reusable buffer for resampling
+
     /**
      * @brief Get default whisper parameters
      * @return Default parameters for whisper_full()

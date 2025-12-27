@@ -81,8 +81,10 @@ void RNNoiseProcessor::Process(int16_t* samples, size_t num_samples) {
         return;
 
 #ifdef ENABLE_RNNOISE
-    // Convert int16_t -> float
-    float_buffer_.resize(num_samples);
+    // Convert int16_t -> float (resize only if needed to avoid reallocations)
+    if (float_buffer_.size() < num_samples) {
+        float_buffer_.resize(num_samples);
+    }
     for (size_t i = 0; i < num_samples; ++i) {
         float_buffer_[i] = samples[i] / 32768.0f;  // Normalize to [-1, 1]
     }

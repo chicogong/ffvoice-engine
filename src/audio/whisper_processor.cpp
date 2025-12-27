@@ -260,14 +260,17 @@ bool WhisperProcessor::ConvertBufferToFloat(const int16_t* samples, size_t num_s
     // This assumption matches the standard recording configuration for real-time transcription
 
     // Convert int16_t 48kHz mono -> float 16kHz mono for Whisper
-    std::vector<float> float_buffer(num_samples);
-    AudioConverter::Int16ToFloat(samples, num_samples, float_buffer.data());
+    // Reuse conversion_buffer_ to avoid repeated allocations
+    if (conversion_buffer_.size() < num_samples) {
+        conversion_buffer_.resize(num_samples);
+    }
+    AudioConverter::Int16ToFloat(samples, num_samples, conversion_buffer_.data());
 
     // Resample 48kHz -> 16kHz
     size_t output_size = static_cast<size_t>(num_samples * (16000.0 / 48000.0));
     pcm_data.resize(output_size);
-    AudioConverter::Resample(float_buffer.data(), num_samples, 48000, pcm_data.data(), output_size,
-                             16000);
+    AudioConverter::Resample(conversion_buffer_.data(), num_samples, 48000, pcm_data.data(),
+                             output_size, 16000);
 
     return true;
 }
