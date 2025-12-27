@@ -141,16 +141,20 @@ ls dist/*.whl
 
 ## Secrets 配置
 
-### PyPI 发布 (可选)
+### PyPI 发布
 
-如果要启用自动 PyPI 发布，需要配置以下 secret:
+✅ **已配置** - PyPI 自动发布已启用:
 
-1. 在 PyPI 创建 API token
-2. 在 GitHub repository settings 添加 secret:
-   - Name: `PYPI_API_TOKEN`
-   - Value: `pypi-...` (你的 PyPI API token)
+- Secret Name: `PYPI_API_TOKEN`
+- 配置时间: 2025-12-27
+- 状态: 激活
 
-配置后，每次创建新 tag 时会自动上传到 PyPI。
+每次创建新 tag (如 `v0.5.0`) 时，workflow 将自动:
+1. 构建所有平台的 wheel 包
+2. 上传到 GitHub Release
+3. 自动发布到 PyPI (https://pypi.org/project/ffvoice/)
+
+**注意**: 确保 PyPI 项目名称为 `ffvoice` 且你有上传权限。
 
 ## Workflow 状态 Badge
 
