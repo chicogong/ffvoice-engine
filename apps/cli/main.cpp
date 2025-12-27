@@ -19,6 +19,11 @@
 #include "audio/rnnoise_processor.h"
 #endif
 
+#ifdef ENABLE_WHISPER
+#include "audio/whisper_processor.h"
+#include "utils/subtitle_generator.h"
+#endif
+
 #include <atomic>
 #include <csignal>
 #include <thread>
@@ -48,6 +53,14 @@ void print_usage(const char* program_name) {
 #else
     std::cout << "    (RNNoise not available - rebuild with -DENABLE_RNNOISE=ON)\n";
 #endif
+#ifdef ENABLE_WHISPER
+    std::cout << "\n  Whisper ASR (Speech Recognition):\n";
+    std::cout << "    --transcribe FILE     Transcribe audio file (offline mode)\n";
+    std::cout << "    --format FMT          Subtitle format: txt, srt, vtt (default: txt)\n";
+    std::cout << "    --language LANG       Language: auto, zh, en, etc. (default: auto)\n";
+#else
+    std::cout << "\n  (Whisper ASR not available - rebuild with -DENABLE_WHISPER=ON)\n";
+#endif
     std::cout << "\nExamples:\n";
     std::cout << "  " << program_name << " --list-devices\n";
     std::cout << "  " << program_name << " --test-wav test.wav\n";
@@ -58,6 +71,11 @@ void print_usage(const char* program_name) {
 #ifdef ENABLE_RNNOISE
     std::cout << "  " << program_name << " --record -o clean.wav --rnnoise -t 10\n";
     std::cout << "  " << program_name << " --record -o studio.flac --rnnoise --highpass 80 --normalize\n";
+#endif
+#ifdef ENABLE_WHISPER
+    std::cout << "  " << program_name << " --transcribe speech.wav -o transcript.txt\n";
+    std::cout << "  " << program_name << " --transcribe speech.wav --format srt -o subtitles.srt\n";
+    std::cout << "  " << program_name << " --transcribe speech.flac --format vtt --language zh\n";
 #endif
 }
 
@@ -121,6 +139,73 @@ int list_devices() {
 
     return 0;
 }
+
+#ifdef ENABLE_WHISPER
+int transcribe_file(const std::string& audio_file,
+                   const std::string& output_file,
+                   const std::string& format_str,
+                   const std::string& language) {
+    using namespace ffvoice;
+
+    std::cout << "Transcribing audio file:\n";
+    std::cout << "  Input: " << audio_file << "\n";
+    std::cout << "  Output: " << output_file << "\n";
+    std::cout << "  Format: " << format_str << "\n";
+    std::cout << "  Language: " << language << "\n\n";
+
+    // Initialize Whisper processor
+    WhisperConfig config;
+    config.language = language;
+    config.print_progress = true;
+
+    WhisperProcessor whisper(config);
+
+    if (!whisper.Initialize()) {
+        std::cerr << "Failed to initialize Whisper: "
+                  << whisper.GetLastError() << "\n";
+        return 1;
+    }
+
+    // Transcribe audio file
+    std::vector<TranscriptionSegment> segments;
+    std::cout << "Processing... (this may take a while)\n";
+
+    if (!whisper.TranscribeFile(audio_file, segments)) {
+        std::cerr << "Transcription failed: "
+                  << whisper.GetLastError() << "\n";
+        return 1;
+    }
+
+    std::cout << "Transcription complete: "
+              << segments.size() << " segments\n\n";
+
+    // Determine output format
+    SubtitleGenerator::Format format;
+    if (format_str == "srt") {
+        format = SubtitleGenerator::Format::SRT;
+    } else if (format_str == "vtt") {
+        format = SubtitleGenerator::Format::VTT;
+    } else {
+        format = SubtitleGenerator::Format::PlainText;
+    }
+
+    // Generate subtitle/transcript file
+    if (!SubtitleGenerator::Generate(segments, output_file, format)) {
+        std::cerr << "Failed to generate subtitle file\n";
+        return 1;
+    }
+
+    std::cout << "Success! Transcription saved to: " << output_file << "\n";
+
+    // Print first few segments as preview
+    std::cout << "\nPreview (first 3 segments):\n";
+    for (size_t i = 0; i < std::min(size_t(3), segments.size()); ++i) {
+        std::cout << "  [" << i << "] " << segments[i].text << "\n";
+    }
+
+    return 0;
+}
+#endif
 
 // Global flag for Ctrl+C handling
 static std::atomic<bool> g_stop_recording{false};
@@ -360,6 +445,48 @@ int main(int argc, char* argv[]) {
     if (arg1 == "--list-devices" || arg1 == "-l") {
         return list_devices();
     }
+
+#ifdef ENABLE_WHISPER
+    if (arg1 == "--transcribe") {
+        // Parse transcription arguments
+        if (argc < 3) {
+            std::cerr << "Error: --transcribe requires an audio file\n";
+            std::cerr << "Usage: " << argv[0] << " --transcribe input.wav -o output.txt [OPTIONS]\n";
+            return 1;
+        }
+
+        std::string audio_file = argv[2];
+        std::string output_file;
+        std::string format = "txt";      // default: plain text
+        std::string language = "auto";   // default: auto-detect
+
+        // Parse options
+        for (int i = 3; i < argc; ++i) {
+            std::string arg = argv[i];
+
+            if (i + 1 >= argc) break;
+            std::string value = argv[i + 1];
+
+            if (arg == "-o" || arg == "--output") {
+                output_file = value;
+                ++i;
+            } else if (arg == "--format" || arg == "-f") {
+                format = value;
+                ++i;
+            } else if (arg == "--language") {
+                language = value;
+                ++i;
+            }
+        }
+
+        if (output_file.empty()) {
+            std::cerr << "Error: Output file required (-o FILE)\n";
+            return 1;
+        }
+
+        return transcribe_file(audio_file, output_file, format, language);
+    }
+#endif
 
     if (arg1 == "--record" || arg1 == "-r") {
         // Parse arguments

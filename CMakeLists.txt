@@ -18,6 +18,7 @@ option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_EXAMPLES "Build examples" ON)
 option(ENABLE_WEBRTC_APM "Enable WebRTC Audio Processing Module" OFF)
 option(ENABLE_RNNOISE "Enable RNNoise deep learning noise suppression" OFF)
+option(ENABLE_WHISPER "Enable Whisper ASR (speech recognition)" OFF)
 
 # Compiler flags
 if(MSVC)
@@ -190,6 +191,79 @@ else()
     message(STATUS "RNNoise: Disabled (use -DENABLE_RNNOISE=ON to enable)")
 endif()
 
+# Whisper ASR (conditional)
+if(ENABLE_WHISPER)
+    message(STATUS "Whisper ASR: Enabled")
+    add_compile_definitions(ENABLE_WHISPER)
+
+    # Fetch whisper.cpp library via CMake FetchContent
+    include(FetchContent)
+
+    message(STATUS "Fetching whisper.cpp from GitHub...")
+
+    FetchContent_Declare(
+        whisper
+        GIT_REPOSITORY https://github.com/ggerganov/whisper.cpp.git
+        GIT_TAG v1.5.4
+        GIT_SHALLOW TRUE
+    )
+
+    # Configure whisper.cpp build options
+    set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+    # Disable AVX/AVX2/SIMD for Rosetta 2 compatibility
+    set(WHISPER_NO_AVX ON CACHE BOOL "" FORCE)
+    set(WHISPER_NO_AVX2 ON CACHE BOOL "" FORCE)
+    set(WHISPER_NO_FMA ON CACHE BOOL "" FORCE)
+    set(WHISPER_NO_F16C ON CACHE BOOL "" FORCE)
+    set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
+
+    FetchContent_MakeAvailable(whisper)
+
+    message(STATUS "whisper.cpp fetched successfully")
+    message(STATUS "  Source dir: ${whisper_SOURCE_DIR}")
+
+    # Download Whisper tiny model (39MB)
+    set(WHISPER_MODEL_DIR "${CMAKE_BINARY_DIR}/models")
+    set(WHISPER_TINY_MODEL "${WHISPER_MODEL_DIR}/ggml-tiny.bin")
+
+    if(NOT EXISTS ${WHISPER_TINY_MODEL})
+        message(STATUS "Downloading whisper tiny model (39MB)...")
+        file(MAKE_DIRECTORY ${WHISPER_MODEL_DIR})
+
+        file(DOWNLOAD
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
+            ${WHISPER_TINY_MODEL}
+            SHOW_PROGRESS
+            STATUS DOWNLOAD_STATUS
+        )
+
+        list(GET DOWNLOAD_STATUS 0 DOWNLOAD_CODE)
+        if(NOT DOWNLOAD_CODE EQUAL 0)
+            message(WARNING "Failed to download whisper model. Please download manually from:")
+            message(WARNING "  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin")
+            message(WARNING "  Save to: ${WHISPER_TINY_MODEL}")
+        else()
+            message(STATUS "Model downloaded successfully")
+        endif()
+    else()
+        message(STATUS "Whisper tiny model already exists at ${WHISPER_TINY_MODEL}")
+    endif()
+
+    # Add compile definition for model path
+    add_compile_definitions(WHISPER_MODEL_PATH="${WHISPER_TINY_MODEL}")
+
+    list(APPEND FFVOICE_CORE_SOURCES
+        src/audio/whisper_processor.cpp
+        src/utils/subtitle_generator.cpp
+        src/utils/audio_converter.cpp
+    )
+else()
+    message(STATUS "Whisper ASR: Disabled (use -DENABLE_WHISPER=ON to enable)")
+endif()
+
 # Core library
 add_library(ffvoice-core STATIC ${FFVOICE_CORE_SOURCES})
 
@@ -212,6 +286,15 @@ if(ENABLE_RNNOISE)
     )
     target_include_directories(ffvoice-core
         PUBLIC ${rnnoise_SOURCE_DIR}/include
+    )
+endif()
+
+if(ENABLE_WHISPER)
+    target_link_libraries(ffvoice-core
+        PUBLIC whisper
+    )
+    target_include_directories(ffvoice-core
+        PUBLIC ${whisper_SOURCE_DIR}
     )
 endif()
 
