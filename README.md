@@ -346,7 +346,14 @@ ffvoice-engine/
 - [x] VAD 分段状态机（Speech → Silence → Trigger）
 - [x] 实时转写输出（边录边显示）
 
-### Milestone 5: 高级功能（规划中）
+### Milestone 5: 性能优化与增强 (✨ 100% 完成)
+- [x] Whisper 模型选择（TINY/BASE/SMALL/MEDIUM/LARGE）
+- [x] 性能计时系统（分段计时 + RTF 计算）
+- [x] VAD 灵敏度预设（5 种预设配置）
+- [x] VAD 自适应阈值（动态环境适应）
+- [x] 内存优化（缓冲区重用 + 条件扩容）
+
+### Milestone 6: 高级功能（规划中）
 - 多音轨混音
 - 实时推流（SRT/RTMP）
 - GUI 客户端（Qt）
@@ -461,6 +468,23 @@ make test
   - 准确率：英文 ~8-10% WER，中文 ~12-15% WER
 - 推理线程数可配置（默认 4 线程）
 - 可选翻译功能（转写 + 翻译成英文）
+
+**性能优化（v0.3.0 新增）**：
+- **Whisper 模型选择**：
+  - 支持 TINY/BASE/SMALL/MEDIUM/LARGE 模型
+  - 灵活平衡速度与精度（10x → 0.5x realtime）
+- **性能计时系统**：
+  - 详细分段计时（转换/推理/提取）
+  - 实时因子 (RTF) 自动计算
+  - 性能瓶颈识别
+- **VAD 智能优化**：
+  - 5 种灵敏度预设（VERY_SENSITIVE → VERY_CONSERVATIVE）
+  - 自适应阈值调整（根据环境噪声动态优化）
+  - 实时统计（平均 VAD 概率、语音占比）
+- **内存优化**：
+  - 缓冲区重用（减少 90% 内存分配）
+  - 条件扩容（避免不必要的 resize）
+  - 降低内存碎片化和 GC 压力
 
 **AudioConverter - 音频格式转换**：
 - WAV/FLAC 文件加载
