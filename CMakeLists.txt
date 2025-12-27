@@ -16,6 +16,7 @@ endif()
 # Build options
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_EXAMPLES "Build examples" ON)
+option(BUILD_PYTHON "Build Python bindings" OFF)
 option(ENABLE_WEBRTC_APM "Enable WebRTC Audio Processing Module" OFF)
 option(ENABLE_RNNOISE "Enable RNNoise deep learning noise suppression" OFF)
 option(ENABLE_WHISPER "Enable Whisper ASR (speech recognition)" OFF)
@@ -263,6 +264,51 @@ if(ENABLE_WHISPER)
     )
 else()
     message(STATUS "Whisper ASR: Disabled (use -DENABLE_WHISPER=ON to enable)")
+endif()
+
+# Python bindings (optional)
+if(BUILD_PYTHON)
+    message(STATUS "Python bindings: Enabled")
+
+    # Find Python
+    find_package(Python COMPONENTS Interpreter Development REQUIRED)
+
+    # Find pybind11
+    find_package(pybind11 CONFIG)
+
+    if(NOT pybind11_FOUND)
+        message(STATUS "pybind11 not found in system, fetching from GitHub...")
+        include(FetchContent)
+
+        FetchContent_Declare(
+            pybind11
+            GIT_REPOSITORY https://github.com/pybind/pybind11.git
+            GIT_TAG v2.11.1
+            GIT_SHALLOW TRUE
+        )
+
+        FetchContent_MakeAvailable(pybind11)
+        message(STATUS "pybind11 fetched successfully")
+    else()
+        message(STATUS "pybind11 found: ${pybind11_DIR}")
+    endif()
+
+    # Python module
+    pybind11_add_module(_ffvoice src/python/bindings.cpp)
+
+    target_link_libraries(_ffvoice PRIVATE ffvoice-core)
+
+    target_include_directories(_ffvoice PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+    )
+
+    # Install Python module
+    install(TARGETS _ffvoice LIBRARY DESTINATION python/ffvoice)
+    install(DIRECTORY python/ffvoice/ DESTINATION python/ffvoice
+            FILES_MATCHING PATTERN "*.py")
+else()
+    message(STATUS "Python bindings: Disabled (use -DBUILD_PYTHON=ON to enable)")
 endif()
 
 # Core library

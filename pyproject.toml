@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "cmake>=3.20"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ffvoice"
+version = "0.4.0"
+description = "High-performance offline speech recognition library for Python"
+readme = "README.md"
+requires-python = ">=3.7"
+license = "MIT"
+authors = [
+    {name = "ffvoice-engine contributors"}
+]
+keywords = [
+    "speech-recognition",
+    "asr",
+    "whisper",
+    "voice-activity-detection",
+    "noise-reduction",
+    "rnnoise",
+    "offline-transcription",
+    "real-time-audio"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: C++",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+]
+
+[project.urls]
+Homepage = "https://github.com/chicogong/ffvoice-engine"
+"Bug Reports" = "https://github.com/chicogong/ffvoice-engine/issues"
+"Source" = "https://github.com/chicogong/ffvoice-engine"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "flake8>=6.0",
+    "mypy>=1.0",
+]
+numpy = [
+    "numpy>=1.20",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py37', 'py38', 'py39', 'py310', 'py311', 'py312']
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"

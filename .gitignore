@@ -101,13 +101,30 @@ docs/_build/
 docs/html/
 docs/latex/
 
-# Python (if any scripts)
+# Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 .pytest_cache/
 .venv/
 venv/
+env/
+ENV/
+
+# Python build artifacts
+*.egg-info/
+dist/
+build/
+*.egg
+*.whl
+.eggs/
+*.so
+
+# Python package
+python/ffvoice.egg-info/
+python/build/
+python/dist/
 
 # Backup files
 *.backup
