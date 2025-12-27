@@ -17,6 +17,8 @@
 [![Windows](https://github.com/chicogong/ffvoice-engine/workflows/CI/badge.svg?label=Windows)](https://github.com/chicogong/ffvoice-engine/actions)
 
 <!-- Version & Community -->
+[![PyPI version](https://img.shields.io/pypi/v/ffvoice.svg)](https://pypi.org/project/ffvoice/)
+[![Python versions](https://img.shields.io/pypi/pyversions/ffvoice.svg)](https://pypi.org/project/ffvoice/)
 [![GitHub release](https://img.shields.io/github/release/chicogong/ffvoice-engine.svg)](https://github.com/chicogong/ffvoice-engine/releases)
 [![GitHub stars](https://img.shields.io/github/stars/chicogong/ffvoice-engine?style=social)](https://github.com/chicogong/ffvoice-engine/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/chicogong/ffvoice-engine?style=social)](https://github.com/chicogong/ffvoice-engine/network/members)
@@ -273,6 +275,81 @@ afplay recording.wav   # 或 recording.flac
 # 实时转写 + 音频处理
 ./build/ffvoice --record -o speech.flac --rnnoise-vad --transcribe-live --highpass 80 --normalize -t 120
 ```
+
+## 🐍 Python Bindings
+
+ffvoice 提供高性能的 Python 绑定，让您在 Python 中轻松使用所有功能。
+
+### 安装
+
+**从 PyPI 安装** (即将发布):
+```bash
+pip install ffvoice
+```
+
+**从源码安装**:
+```bash
+git clone https://github.com/chicogong/ffvoice-engine.git
+cd ffvoice-engine
+pip install .
+```
+
+### 快速示例
+
+```python
+import ffvoice
+import numpy as np
+
+# 1. 语音识别
+config = ffvoice.WhisperConfig()
+config.model_type = ffvoice.WhisperModelType.TINY
+asr = ffvoice.WhisperASR(config)
+asr.initialize()
+
+# 从文件转写
+segments = asr.transcribe_file("audio.wav")
+for seg in segments:
+    print(f"[{seg.start_ms}ms - {seg.end_ms}ms] {seg.text}")
+
+# 从 NumPy 数组转写
+audio = np.zeros(48000, dtype=np.int16)  # 1秒音频
+segments = asr.transcribe_buffer(audio)
+
+# 2. 噪声抑制
+rnnoise = ffvoice.RNNoise(ffvoice.RNNoiseConfig())
+rnnoise.initialize(sample_rate=48000, channels=1)
+
+audio = np.random.randint(-1000, 1000, 256, dtype=np.int16)
+rnnoise.process(audio)  # 原地处理
+vad_prob = rnnoise.get_vad_probability()
+
+# 3. 实时音频采集
+def audio_callback(audio_array):
+    print(f"收到 {len(audio_array)} 个采样")
+
+ffvoice.AudioCapture.initialize()
+capture = ffvoice.AudioCapture()
+capture.open(sample_rate=48000, channels=1, frames_per_buffer=256)
+capture.start(audio_callback)
+# ... 录制中 ...
+capture.stop()
+capture.close()
+ffvoice.AudioCapture.terminate()
+```
+
+### 完整文档
+
+详细文档和示例请查看 [`python/README.md`](python/README.md):
+- 📖 完整 API 参考
+- 🎯 13+ 代码示例
+- 🚀 Quick Start 指南
+- 📓 Jupyter Notebook 教程
+
+**性能优势**:
+- ⚡ **3-10x 更快** - C++ 核心 vs 纯 Python 实现
+- 💾 **零拷贝** - NumPy 数组直接传递
+- 🔒 **100% 离线** - 无需网络，隐私安全
+- 🎙️ **完整工作流** - 采集 → 降噪 → VAD → 识别
 
 ## 📁 项目结构
 
