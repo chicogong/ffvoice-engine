@@ -21,6 +21,7 @@
 
 #ifdef ENABLE_WHISPER
     #include "audio/whisper_processor.h"
+    #include "audio/vad_segmenter.h"
     #include "utils/subtitle_generator.h"
 #endif
 
@@ -59,6 +60,8 @@ void print_usage(const char* program_name) {
     std::cout << "    --transcribe FILE     Transcribe audio file (offline mode)\n";
     std::cout << "    --format FMT          Subtitle format: txt, srt, vtt (default: txt)\n";
     std::cout << "    --language LANG       Language: auto, zh, en, etc. (default: auto)\n";
+    std::cout << "    --transcribe-live     Enable real-time transcription during recording\n";
+    std::cout << "                          (requires --rnnoise-vad for VAD-based segmentation)\n";
 #else
     std::cout << "\n  (Whisper ASR not available - rebuild with -DENABLE_WHISPER=ON)\n";
 #endif
@@ -78,6 +81,8 @@ void print_usage(const char* program_name) {
     std::cout << "  " << program_name << " --transcribe speech.wav -o transcript.txt\n";
     std::cout << "  " << program_name << " --transcribe speech.wav --format srt -o subtitles.srt\n";
     std::cout << "  " << program_name << " --transcribe speech.flac --format vtt --language zh\n";
+    std::cout << "  " << program_name
+              << " --record -o speech.wav --rnnoise-vad --transcribe-live -t 60\n";
 #endif
 }
 
@@ -222,6 +227,10 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
                  ,
                  bool enable_rnnoise = false, bool rnnoise_vad = false
 #endif
+#ifdef ENABLE_WHISPER
+                 ,
+                 bool transcribe_live = false
+#endif
 ) {
     using namespace ffvoice;
 
@@ -260,7 +269,14 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
         }
     }
 
-    std::cout << "  Output: " << output_file << "\n\n";
+    std::cout << "  Output: " << output_file << "\n";
+
+#ifdef ENABLE_WHISPER
+    if (transcribe_live) {
+        std::cout << "  Real-time transcription: enabled\n";
+    }
+#endif
+    std::cout << "\n";
 
     // Open output file based on format
     WavWriter wav_writer;
@@ -287,6 +303,10 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
 
     // Setup audio processing chain
     std::unique_ptr<AudioProcessorChain> processor_chain;
+#ifdef ENABLE_RNNOISE
+    RNNoiseProcessor* rnnoise_ptr = nullptr;  // For VAD access
+#endif
+
     if (has_processing) {
         processor_chain = std::make_unique<AudioProcessorChain>();
 
@@ -299,7 +319,9 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
         if (enable_rnnoise) {
             RNNoiseConfig config;
             config.enable_vad = rnnoise_vad;
-            processor_chain->AddProcessor(std::make_unique<RNNoiseProcessor>(config));
+            auto rnnoise = std::make_unique<RNNoiseProcessor>(config);
+            rnnoise_ptr = rnnoise.get();  // Store pointer for VAD access
+            processor_chain->AddProcessor(std::move(rnnoise));
         }
 #endif
 
@@ -313,6 +335,50 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
             return 1;
         }
     }
+
+#ifdef ENABLE_WHISPER
+    // Setup real-time transcription (requires RNNoise VAD)
+    std::unique_ptr<WhisperProcessor> whisper_processor;
+    std::unique_ptr<VADSegmenter> vad_segmenter;
+    std::atomic<int> segment_counter{0};
+
+    if (transcribe_live) {
+#ifdef ENABLE_RNNOISE
+        if (!rnnoise_vad || !rnnoise_ptr) {
+            std::cerr << "Error: --transcribe-live requires --rnnoise-vad\n";
+            return 1;
+        }
+
+        // Initialize Whisper processor
+        WhisperConfig whisper_config;
+        whisper_config.language = "auto";
+        whisper_config.print_progress = false;  // Don't print progress for real-time
+        whisper_processor = std::make_unique<WhisperProcessor>(whisper_config);
+
+        if (!whisper_processor->Initialize()) {
+            std::cerr << "Failed to initialize Whisper: " << whisper_processor->GetLastError()
+                      << "\n";
+            return 1;
+        }
+
+        // Initialize VAD segmenter
+        VADSegmenter::Config vad_config;
+        vad_config.speech_threshold = 0.5f;
+        vad_config.min_speech_frames = 30;   // ~0.3s
+        vad_config.min_silence_frames = 50;  // ~0.5s
+        vad_config.max_segment_samples = 480000;  // 10s @48kHz
+        vad_segmenter = std::make_unique<VADSegmenter>(vad_config);
+
+        std::cout << "Real-time transcription initialized\n";
+        std::cout << "  Whisper model: loaded\n";
+        std::cout << "  VAD segmentation: enabled\n\n";
+#else
+        std::cerr << "Error: --transcribe-live requires RNNoise support\n";
+        std::cerr << "Rebuild with: cmake -DENABLE_RNNOISE=ON -DENABLE_WHISPER=ON\n";
+        return 1;
+#endif
+    }
+#endif
 
     // Open audio device
     AudioCaptureDevice capture;
@@ -347,6 +413,35 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
             processor_chain->Process(process_buffer.data(), num_samples);
             processed_samples = process_buffer.data();
         }
+
+#ifdef ENABLE_WHISPER
+        // Real-time transcription: VAD segmentation
+        if (transcribe_live && vad_segmenter && whisper_processor) {
+#ifdef ENABLE_RNNOISE
+            if (rnnoise_ptr) {
+                // Get VAD probability from RNNoise
+                float vad_prob = rnnoise_ptr->GetVADProbability();
+
+                // Process frame with VAD segmenter
+                vad_segmenter->ProcessFrame(
+                    processed_samples, num_samples, vad_prob,
+                    [&](const int16_t* segment_samples, size_t segment_size) {
+                        // Segment callback: transcribe this segment
+                        std::vector<TranscriptionSegment> segments;
+
+                        if (whisper_processor->TranscribeBuffer(segment_samples, segment_size,
+                                                                segments)) {
+                            // Print transcription results
+                            for (const auto& seg : segments) {
+                                int idx = segment_counter++;
+                                std::cout << "\n[" << idx << "] " << seg.text << std::flush;
+                            }
+                        }
+                    });
+            }
+#endif
+        }
+#endif
 
         // Write processed (or original) samples to file
         if (format == "wav") {
@@ -502,6 +597,9 @@ int main(int argc, char* argv[]) {
         bool enable_rnnoise = false;
         bool rnnoise_vad = false;
 #endif
+#ifdef ENABLE_WHISPER
+        bool transcribe_live = false;
+#endif
 
         // Simple argument parsing
         for (int i = 2; i < argc; ++i) {
@@ -523,6 +621,12 @@ int main(int argc, char* argv[]) {
             } else if (arg == "--rnnoise-vad") {
                 enable_rnnoise = true;
                 rnnoise_vad = true;
+                continue;
+            }
+#endif
+#ifdef ENABLE_WHISPER
+            else if (arg == "--transcribe-live") {
+                transcribe_live = true;
                 continue;
             }
 #endif
@@ -578,6 +682,10 @@ int main(int argc, char* argv[]) {
 #ifdef ENABLE_RNNOISE
                             ,
                             enable_rnnoise, rnnoise_vad
+#endif
+#ifdef ENABLE_WHISPER
+                            ,
+                            transcribe_live
 #endif
         );
     }

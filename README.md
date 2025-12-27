@@ -37,17 +37,17 @@
 
 ffvoice-engine 是一个高性能的音频处理引擎，专注于实时音频采集、处理和录制。
 
-### 核心特性（规划）
+### 核心特性
 
 - ✅ **实时音频采集** - 低延迟麦克风/系统声音捕获 (PortAudio)
 - ✅ **多格式输出** - WAV、FLAC 无损压缩
 - ✅ **音频增强处理** - 音量归一化、高通滤波、RNNoise降噪
 - ✅ **离线语音识别** - Whisper ASR (tiny model, 3种字幕格式)
-- ⏳ **实时字幕生成** - 边录边转写 (Phase 2)
+- ✅ **实时字幕生成** - 基于 VAD 的边录边转写
 
 ## 🏗️ 当前状态
 
-**Milestone 3**: 离线语音识别 (✨ 100% 完成)
+**Milestone 4**: 实时语音识别 (✨ 100% 完成)
 
 - [x] 项目骨架搭建
 - [x] CMake 构建系统
@@ -59,8 +59,11 @@ ffvoice-engine 是一个高性能的音频处理引擎，专注于实时音频�
 - [x] **设备枚举与选择**
 - [x] **音频处理模块** (音量归一化 + 高通滤波)
 - [x] **RNNoise 降噪** (深度学习，可选)
+- [x] **RNNoise VAD** (语音活动检测，可选)
+- [x] **VAD 音频分段器** (智能语音分段)
 - [x] **WebRTC APM 框架** (可选，需外部库)
 - [x] **Whisper ASR 集成** (离线语音识别)
+- [x] **实时语音识别** (边录边转写)
 - [x] **音频格式转换** (WAV/FLAC → 16kHz)
 - [x] **字幕生成** (纯文本/SRT/VTT)
 - [x] **单元测试** (39+ 个测试用例)
@@ -228,6 +231,14 @@ afplay recording.wav   # 或 recording.flac
 # 完整工作流：录制 + 音频处理 + 转写
 ./build/ffvoice --record -o speech.flac --highpass 80 --rnnoise --normalize -t 30
 ./build/ffvoice --transcribe speech.flac --format srt -o speech.srt
+
+# ==================== 实时语音识别（需启用 ENABLE_RNNOISE 和 ENABLE_WHISPER） ====================
+
+# 边录边转写（实时模式）
+./build/ffvoice --record -o speech.wav --rnnoise-vad --transcribe-live -t 60
+
+# 实时转写 + 音频处理
+./build/ffvoice --record -o speech.flac --rnnoise-vad --transcribe-live --highpass 80 --normalize -t 120
 ```
 
 ## 📁 项目结构
@@ -242,6 +253,7 @@ ffvoice-engine/
 │   │   ├── audio_capture_device.* # ✅ PortAudio 采集器
 │   │   ├── audio_processor.*      # ✅ 音频处理框架
 │   │   ├── rnnoise_processor.*    # ✅ RNNoise 深度学习降噪 (可选)
+│   │   ├── vad_segmenter.*        # ✅ VAD 音频分段器
 │   │   ├── webrtc_processor.*     # ✅ WebRTC APM 框架 (可选)
 │   │   └── whisper_processor.*    # ✅ Whisper ASR 语音识别 (可选)
 │   ├── media/              # 媒体编码/封装
@@ -292,7 +304,16 @@ ffvoice-engine/
 - [x] CLI 参数集成（--transcribe, --format, --language）
 - [x] 性能优化（5-75x realtime）
 
-### Milestone 4: 高级功能
+### Milestone 4: 实时语音识别 (✨ 100% 完成)
+- [x] VADSegmenter 实现（基于 VAD 的智能分段）
+- [x] RNNoiseProcessor VAD 支持
+- [x] WhisperProcessor 缓冲处理（TranscribeBuffer）
+- [x] 音频格式实时转换（int16 48kHz → float 16kHz）
+- [x] CLI 实时转写集成（--transcribe-live）
+- [x] VAD 分段状态机（Speech → Silence → Trigger）
+- [x] 实时转写输出（边录边显示）
+
+### Milestone 5: 高级功能（规划中）
 - 多音轨混音
 - 实时推流（SRT/RTMP）
 - GUI 客户端（Qt）

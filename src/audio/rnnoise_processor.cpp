@@ -128,6 +128,7 @@ void RNNoiseProcessor::Process(int16_t* samples, size_t num_samples) {
 void RNNoiseProcessor::ProcessFrame(float* frame, size_t frame_size) {
 #ifdef ENABLE_RNNOISE
     // Process each channel independently
+    float total_vad_prob = 0.0f;
     for (int ch = 0; ch < channels_; ++ch) {
         // Extract channel data (deinterleave)
         std::vector<float> channel_data(frame_size);
@@ -136,12 +137,19 @@ void RNNoiseProcessor::ProcessFrame(float* frame, size_t frame_size) {
         }
 
         // Apply RNNoise denoising (in-place)
-        rnnoise_process_frame(states_[ch], channel_data.data(), channel_data.data());
+        // rnnoise_process_frame returns VAD probability (0.0-1.0)
+        float vad_prob = rnnoise_process_frame(states_[ch], channel_data.data(), channel_data.data());
+        total_vad_prob += vad_prob;
 
         // Write back to interleaved buffer
         for (size_t i = 0; i < frame_size; ++i) {
             frame[i * channels_ + ch] = channel_data[i];
         }
+    }
+
+    // Average VAD probability across channels (for stereo)
+    if (config_.enable_vad) {
+        last_vad_prob_ = total_vad_prob / channels_;
     }
 #else
     (void)frame;
@@ -151,6 +159,7 @@ void RNNoiseProcessor::ProcessFrame(float* frame, size_t frame_size) {
 
 void RNNoiseProcessor::Reset() {
     rebuffer_pos_ = 0;
+    last_vad_prob_ = 0.0f;
     std::fill(rebuffer_.begin(), rebuffer_.end(), 0.0f);
 
 #ifdef ENABLE_RNNOISE

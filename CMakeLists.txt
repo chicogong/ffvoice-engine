@@ -113,6 +113,7 @@ endif()
 set(FFVOICE_CORE_SOURCES
     src/audio/audio_capture_device.cpp
     src/audio/audio_processor.cpp
+    src/audio/vad_segmenter.cpp
     src/media/audio_file_writer.cpp
     src/media/wav_writer.cpp
     src/media/flac_writer.cpp

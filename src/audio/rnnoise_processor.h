@@ -72,9 +72,17 @@ public:
     /**
      * @brief Get processor name
      */
-    std::string GetName() const override {
-        return "RNNoiseProcessor";
-    }
+    std::string GetName() const override { return "RNNoiseProcessor"; }
+
+    /**
+     * @brief Get the last VAD probability (0.0 = silence, 1.0 = speech)
+     *
+     * This returns the VAD probability from the most recent processed frame.
+     * Only valid when enable_vad is true in config.
+     *
+     * @return VAD probability (0.0-1.0), or 0.0 if VAD is disabled
+     */
+    float GetVADProbability() const { return last_vad_prob_; }
 
 private:
     /**
@@ -99,6 +107,9 @@ private:
     std::vector<float> rebuffer_;  ///< Accumulation buffer
     size_t rebuffer_pos_ = 0;      ///< Current position in rebuffer
     size_t frame_size_ = 0;        ///< 480 samples @48kHz (10ms)
+
+    // VAD state
+    float last_vad_prob_ = 0.0f;  ///< Last VAD probability (0.0-1.0)
 };
 
-}  // namespace ffvoice
+} // namespace ffvoice
