@@ -1,6 +1,6 @@
 # ffvoice-engine - Low-latency C++ voice engine
 cmake_minimum_required(VERSION 3.20)
-project(ffvoice-engine VERSION 0.1.0 LANGUAGES CXX)
+project(ffvoice-engine VERSION 0.1.0 LANGUAGES CXX C)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 20)
@@ -17,6 +17,7 @@ endif()
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_EXAMPLES "Build examples" ON)
 option(ENABLE_WEBRTC_APM "Enable WebRTC Audio Processing Module" OFF)
+option(ENABLE_RNNOISE "Enable RNNoise deep learning noise suppression" OFF)
 
 # Compiler flags
 if(MSVC)
@@ -25,7 +26,14 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         # Use -march=native only on x86_64, not on ARM
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+        # On macOS, check CMAKE_OSX_ARCHITECTURES instead of CMAKE_SYSTEM_PROCESSOR
+        if(APPLE)
+            if(CMAKE_OSX_ARCHITECTURES MATCHES "x86_64|AMD64")
+                add_compile_options(-O3 -march=native)
+            else()
+                add_compile_options(-O3)
+            endif()
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
             add_compile_options(-O3 -march=native)
         else()
             add_compile_options(-O3)
@@ -123,6 +131,65 @@ else()
     message(STATUS "WebRTC APM: Disabled (use -DENABLE_WEBRTC_APM=ON to enable)")
 endif()
 
+# RNNoise (conditional)
+if(ENABLE_RNNOISE)
+    message(STATUS "RNNoise: Enabled")
+    add_compile_definitions(ENABLE_RNNOISE)
+
+    # Fetch RNNoise library via CMake FetchContent
+    include(FetchContent)
+
+    message(STATUS "Fetching RNNoise from GitHub...")
+
+    FetchContent_Declare(
+        rnnoise
+        GIT_REPOSITORY https://github.com/xiph/rnnoise.git
+        GIT_TAG master
+        GIT_SHALLOW TRUE
+        SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/rnnoise-src
+    )
+
+    # Download only, don't try to build (RNNoise uses autotools, not CMake)
+    FetchContent_GetProperties(rnnoise)
+    if(NOT rnnoise_POPULATED)
+        FetchContent_Populate(rnnoise)
+    endif()
+
+    # RNNoise source files (manual configuration since it uses autotools)
+    set(RNNOISE_SOURCES
+        ${rnnoise_SOURCE_DIR}/src/rnn.c
+        ${rnnoise_SOURCE_DIR}/src/rnn_data.c
+        ${rnnoise_SOURCE_DIR}/src/rnn_reader.c
+        ${rnnoise_SOURCE_DIR}/src/denoise.c
+        ${rnnoise_SOURCE_DIR}/src/celt_lpc.c
+        ${rnnoise_SOURCE_DIR}/src/kiss_fft.c
+        ${rnnoise_SOURCE_DIR}/src/pitch.c
+    )
+
+    # Create RNNoise static library
+    add_library(rnnoise STATIC ${RNNOISE_SOURCES})
+
+    target_include_directories(rnnoise PUBLIC
+        ${rnnoise_SOURCE_DIR}/include
+    )
+
+    # RNNoise is a C library
+    set_target_properties(rnnoise PROPERTIES
+        C_STANDARD 99
+        C_STANDARD_REQUIRED ON
+    )
+
+    message(STATUS "RNNoise configured successfully")
+    message(STATUS "  Source dir: ${rnnoise_SOURCE_DIR}")
+    message(STATUS "  Include dir: ${rnnoise_SOURCE_DIR}/include")
+
+    list(APPEND FFVOICE_CORE_SOURCES
+        src/audio/rnnoise_processor.cpp
+    )
+else()
+    message(STATUS "RNNoise: Disabled (use -DENABLE_RNNOISE=ON to enable)")
+endif()
+
 # Core library
 add_library(ffvoice-core STATIC ${FFVOICE_CORE_SOURCES})
 
@@ -136,6 +203,15 @@ target_link_libraries(ffvoice-core
 if(ENABLE_WEBRTC_APM AND WEBRTC_APM_FOUND)
     target_link_libraries(ffvoice-core
         PUBLIC ${WEBRTC_APM_LIBRARIES}
+    )
+endif()
+
+if(ENABLE_RNNOISE)
+    target_link_libraries(ffvoice-core
+        PUBLIC rnnoise
+    )
+    target_include_directories(ffvoice-core
+        PUBLIC ${rnnoise_SOURCE_DIR}/include
     )
 endif()
 

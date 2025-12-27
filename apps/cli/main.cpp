@@ -15,6 +15,10 @@
 #include "audio/audio_capture_device.h"
 #include "audio/audio_processor.h"
 
+#ifdef ENABLE_RNNOISE
+#include "audio/rnnoise_processor.h"
+#endif
+
 #include <atomic>
 #include <csignal>
 #include <thread>
@@ -38,6 +42,12 @@ void print_usage(const char* program_name) {
     std::cout << "    --enable-processing   Enable audio processing (normalize + high-pass filter)\n";
     std::cout << "    --normalize           Enable volume normalization\n";
     std::cout << "    --highpass FREQ       Enable high-pass filter at FREQ Hz (default: 80)\n";
+#ifdef ENABLE_RNNOISE
+    std::cout << "    --rnnoise             Enable RNNoise deep learning noise suppression\n";
+    std::cout << "    --rnnoise-vad         Enable RNNoise with VAD (experimental)\n";
+#else
+    std::cout << "    (RNNoise not available - rebuild with -DENABLE_RNNOISE=ON)\n";
+#endif
     std::cout << "\nExamples:\n";
     std::cout << "  " << program_name << " --list-devices\n";
     std::cout << "  " << program_name << " --test-wav test.wav\n";
@@ -45,6 +55,10 @@ void print_usage(const char* program_name) {
     std::cout << "  " << program_name << " --record -o recording.flac -f flac -t 30\n";
     std::cout << "  " << program_name << " --record -o output.wav --enable-processing -t 20\n";
     std::cout << "  " << program_name << " --record -o clean.flac --normalize --highpass 100\n";
+#ifdef ENABLE_RNNOISE
+    std::cout << "  " << program_name << " --record -o clean.wav --rnnoise -t 10\n";
+    std::cout << "  " << program_name << " --record -o studio.flac --rnnoise --highpass 80 --normalize\n";
+#endif
 }
 
 int generate_test_wav(const std::string& filename) {
@@ -121,7 +135,11 @@ void signal_handler(int signal) {
 int record_audio(int device_id, int duration, const std::string& output_file,
                  int sample_rate, int channels, const std::string& format,
                  int compression_level, bool enable_normalize, bool enable_highpass,
-                 float highpass_freq) {
+                 float highpass_freq
+#ifdef ENABLE_RNNOISE
+                 , bool enable_rnnoise = false, bool rnnoise_vad = false
+#endif
+                 ) {
     using namespace ffvoice;
 
     std::cout << "Recording audio:\n";
@@ -136,13 +154,25 @@ int record_audio(int device_id, int duration, const std::string& output_file,
 
     // Audio processing
     bool has_processing = enable_normalize || enable_highpass;
+#ifdef ENABLE_RNNOISE
+    has_processing = has_processing || enable_rnnoise;
+#endif
     if (has_processing) {
         std::cout << "  Audio processing: enabled\n";
-        if (enable_normalize) {
-            std::cout << "    - Volume normalization\n";
-        }
         if (enable_highpass) {
             std::cout << "    - High-pass filter (" << highpass_freq << " Hz)\n";
+        }
+#ifdef ENABLE_RNNOISE
+        if (enable_rnnoise) {
+            std::cout << "    - RNNoise deep learning noise suppression";
+            if (rnnoise_vad) {
+                std::cout << " (with VAD)";
+            }
+            std::cout << "\n";
+        }
+#endif
+        if (enable_normalize) {
+            std::cout << "    - Volume normalization\n";
         }
     }
 
@@ -176,11 +206,22 @@ int record_audio(int device_id, int duration, const std::string& output_file,
     if (has_processing) {
         processor_chain = std::make_unique<AudioProcessorChain>();
 
+        // Processing order: High-pass -> RNNoise -> Normalize
         if (enable_highpass) {
             processor_chain->AddProcessor(
                 std::make_unique<HighPassFilter>(highpass_freq)
             );
         }
+
+#ifdef ENABLE_RNNOISE
+        if (enable_rnnoise) {
+            RNNoiseConfig config;
+            config.enable_vad = rnnoise_vad;
+            processor_chain->AddProcessor(
+                std::make_unique<RNNoiseProcessor>(config)
+            );
+        }
+#endif
 
         if (enable_normalize) {
             processor_chain->AddProcessor(
@@ -334,6 +375,10 @@ int main(int argc, char* argv[]) {
         bool enable_normalize = false;
         bool enable_highpass = false;
         float highpass_freq = 80.0f;  // Default 80 Hz
+#ifdef ENABLE_RNNOISE
+        bool enable_rnnoise = false;
+        bool rnnoise_vad = false;
+#endif
 
         // Simple argument parsing
         for (int i = 2; i < argc; ++i) {
@@ -348,6 +393,16 @@ int main(int argc, char* argv[]) {
                 enable_normalize = true;
                 continue;
             }
+#ifdef ENABLE_RNNOISE
+            else if (arg == "--rnnoise") {
+                enable_rnnoise = true;
+                continue;
+            } else if (arg == "--rnnoise-vad") {
+                enable_rnnoise = true;
+                rnnoise_vad = true;
+                continue;
+            }
+#endif
 
             // Handle arguments with values
             if (i + 1 >= argc) break;
@@ -396,7 +451,11 @@ int main(int argc, char* argv[]) {
 
         return record_audio(device_id, duration, output_file, sample_rate,
                            channels, format, compression_level,
-                           enable_normalize, enable_highpass, highpass_freq);
+                           enable_normalize, enable_highpass, highpass_freq
+#ifdef ENABLE_RNNOISE
+                           , enable_rnnoise, rnnoise_vad
+#endif
+                           );
     }
 
     std::cout << "ffvoice-engine - Audio recording starting...\n";
