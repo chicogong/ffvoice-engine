@@ -4,14 +4,15 @@
  */
 
 #include "audio/rnnoise_processor.h"
+
 #include "utils/logger.h"
+
 #include <algorithm>
 #include <cmath>
 
 namespace ffvoice {
 
-RNNoiseProcessor::RNNoiseProcessor(const RNNoiseConfig& config)
-    : config_(config) {
+RNNoiseProcessor::RNNoiseProcessor(const RNNoiseConfig& config) : config_(config) {
     log_info("RNNoiseProcessor created");
 }
 
@@ -52,8 +53,7 @@ bool RNNoiseProcessor::Initialize(int sample_rate, int channels) {
     for (int ch = 0; ch < channels_; ++ch) {
         states_[ch] = rnnoise_create(nullptr);
         if (!states_[ch]) {
-            log_error("RNNoise: Failed to create DenoiseState for channel " +
-                     std::to_string(ch));
+            log_error("RNNoise: Failed to create DenoiseState for channel " + std::to_string(ch));
             return false;
         }
     }
@@ -77,7 +77,8 @@ bool RNNoiseProcessor::Initialize(int sample_rate, int channels) {
 }
 
 void RNNoiseProcessor::Process(int16_t* samples, size_t num_samples) {
-    if (num_samples == 0) return;
+    if (num_samples == 0)
+        return;
 
 #ifdef ENABLE_RNNOISE
     // Convert int16_t -> float
@@ -90,10 +91,8 @@ void RNNoiseProcessor::Process(int16_t* samples, size_t num_samples) {
     size_t input_pos = 0;
     while (input_pos < num_samples) {
         // Copy samples to rebuffer
-        size_t to_copy = std::min(frame_size_ * channels_ - rebuffer_pos_,
-                                   num_samples - input_pos);
-        std::copy(float_buffer_.begin() + input_pos,
-                  float_buffer_.begin() + input_pos + to_copy,
+        size_t to_copy = std::min(frame_size_ * channels_ - rebuffer_pos_, num_samples - input_pos);
+        std::copy(float_buffer_.begin() + input_pos, float_buffer_.begin() + input_pos + to_copy,
                   rebuffer_.begin() + rebuffer_pos_);
         rebuffer_pos_ += to_copy;
         input_pos += to_copy;
@@ -173,4 +172,4 @@ void RNNoiseProcessor::Reset() {
 #endif
 }
 
-} // namespace ffvoice
+}  // namespace ffvoice

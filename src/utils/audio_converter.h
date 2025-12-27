@@ -10,9 +10,9 @@
 
 #pragma once
 
-#include <vector>
-#include <string>
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace ffvoice {
 
@@ -47,9 +47,8 @@ public:
      * @param target_sample_rate Target sample rate (default: 16000 Hz)
      * @return true if successful, false otherwise
      */
-    static bool LoadAndConvert(const std::string& filename,
-                              std::vector<float>& pcm_data,
-                              int target_sample_rate = 16000);
+    static bool LoadAndConvert(const std::string& filename, std::vector<float>& pcm_data,
+                               int target_sample_rate = 16000);
 
     /**
      * @brief Convert int16 samples to normalized float
@@ -87,8 +86,8 @@ public:
      * @param output_size Number of output samples
      * @param output_rate Output sample rate (e.g., 16000)
      */
-    static void Resample(const float* input, size_t input_size, int input_rate,
-                        float* output, size_t output_size, int output_rate);
+    static void Resample(const float* input, size_t input_size, int input_rate, float* output,
+                         size_t output_size, int output_rate);
 
     /**
      * @brief Convert stereo to mono by averaging channels
@@ -110,9 +109,8 @@ private:
      * @param channels Output number of channels
      * @return true if successful, false otherwise
      */
-    static bool LoadWAV(const std::string& filename,
-                       std::vector<float>& pcm_data,
-                       int& sample_rate, int& channels);
+    static bool LoadWAV(const std::string& filename, std::vector<float>& pcm_data, int& sample_rate,
+                        int& channels);
 
     /**
      * @brief Load FLAC file
@@ -122,9 +120,8 @@ private:
      * @param channels Output number of channels
      * @return true if successful, false otherwise
      */
-    static bool LoadFLAC(const std::string& filename,
-                        std::vector<float>& pcm_data,
-                        int& sample_rate, int& channels);
+    static bool LoadFLAC(const std::string& filename, std::vector<float>& pcm_data,
+                         int& sample_rate, int& channels);
 };
 
-} // namespace ffvoice
+}  // namespace ffvoice

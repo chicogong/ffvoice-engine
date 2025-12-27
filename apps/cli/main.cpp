@@ -3,31 +3,31 @@
  * @brief CLI entry point for ffvoice-engine
  */
 
-#include <iostream>
-#include <string>
-#include <cstdlib>
-#include <iomanip>
-
-#include "media/wav_writer.h"
-#include "media/flac_writer.h"
-#include "utils/signal_generator.h"
-#include "utils/logger.h"
 #include "audio/audio_capture_device.h"
 #include "audio/audio_processor.h"
+#include "media/flac_writer.h"
+#include "media/wav_writer.h"
+#include "utils/logger.h"
+#include "utils/signal_generator.h"
+
+#include <cstdlib>
+#include <iomanip>
+#include <iostream>
+#include <string>
 
 #ifdef ENABLE_RNNOISE
-#include "audio/rnnoise_processor.h"
+    #include "audio/rnnoise_processor.h"
 #endif
 
 #ifdef ENABLE_WHISPER
-#include "audio/whisper_processor.h"
-#include "utils/subtitle_generator.h"
+    #include "audio/whisper_processor.h"
+    #include "utils/subtitle_generator.h"
 #endif
 
 #include <atomic>
+#include <chrono>
 #include <csignal>
 #include <thread>
-#include <chrono>
 
 void print_usage(const char* program_name) {
     std::cout << "ffvoice-engine v0.1.0 - Low-latency audio capture and recording\n\n";
@@ -44,7 +44,8 @@ void print_usage(const char* program_name) {
     std::cout << "    --sample-rate RATE    Sample rate in Hz (default: 48000)\n";
     std::cout << "    --channels NUM        Number of channels: 1=mono, 2=stereo (default: 1)\n";
     std::cout << "    --compression LEVEL   FLAC compression level 0-8 (default: 5)\n";
-    std::cout << "    --enable-processing   Enable audio processing (normalize + high-pass filter)\n";
+    std::cout
+        << "    --enable-processing   Enable audio processing (normalize + high-pass filter)\n";
     std::cout << "    --normalize           Enable volume normalization\n";
     std::cout << "    --highpass FREQ       Enable high-pass filter at FREQ Hz (default: 80)\n";
 #ifdef ENABLE_RNNOISE
@@ -70,7 +71,8 @@ void print_usage(const char* program_name) {
     std::cout << "  " << program_name << " --record -o clean.flac --normalize --highpass 100\n";
 #ifdef ENABLE_RNNOISE
     std::cout << "  " << program_name << " --record -o clean.wav --rnnoise -t 10\n";
-    std::cout << "  " << program_name << " --record -o studio.flac --rnnoise --highpass 80 --normalize\n";
+    std::cout << "  " << program_name
+              << " --record -o studio.flac --rnnoise --highpass 80 --normalize\n";
 #endif
 #ifdef ENABLE_WHISPER
     std::cout << "  " << program_name << " --transcribe speech.wav -o transcript.txt\n";
@@ -131,7 +133,8 @@ int list_devices() {
                   << device.max_output_channels << " out\n";
         std::cout << "  Sample rates: ";
         for (size_t i = 0; i < device.supported_sample_rates.size(); ++i) {
-            if (i > 0) std::cout << ", ";
+            if (i > 0)
+                std::cout << ", ";
             std::cout << device.supported_sample_rates[i];
         }
         std::cout << " Hz\n\n";
@@ -141,10 +144,8 @@ int list_devices() {
 }
 
 #ifdef ENABLE_WHISPER
-int transcribe_file(const std::string& audio_file,
-                   const std::string& output_file,
-                   const std::string& format_str,
-                   const std::string& language) {
+int transcribe_file(const std::string& audio_file, const std::string& output_file,
+                    const std::string& format_str, const std::string& language) {
     using namespace ffvoice;
 
     std::cout << "Transcribing audio file:\n";
@@ -161,8 +162,7 @@ int transcribe_file(const std::string& audio_file,
     WhisperProcessor whisper(config);
 
     if (!whisper.Initialize()) {
-        std::cerr << "Failed to initialize Whisper: "
-                  << whisper.GetLastError() << "\n";
+        std::cerr << "Failed to initialize Whisper: " << whisper.GetLastError() << "\n";
         return 1;
     }
 
@@ -171,13 +171,11 @@ int transcribe_file(const std::string& audio_file,
     std::cout << "Processing... (this may take a while)\n";
 
     if (!whisper.TranscribeFile(audio_file, segments)) {
-        std::cerr << "Transcription failed: "
-                  << whisper.GetLastError() << "\n";
+        std::cerr << "Transcription failed: " << whisper.GetLastError() << "\n";
         return 1;
     }
 
-    std::cout << "Transcription complete: "
-              << segments.size() << " segments\n\n";
+    std::cout << "Transcription complete: " << segments.size() << " segments\n\n";
 
     // Determine output format
     SubtitleGenerator::Format format;
@@ -217,21 +215,22 @@ void signal_handler(int signal) {
     }
 }
 
-int record_audio(int device_id, int duration, const std::string& output_file,
-                 int sample_rate, int channels, const std::string& format,
-                 int compression_level, bool enable_normalize, bool enable_highpass,
-                 float highpass_freq
+int record_audio(int device_id, int duration, const std::string& output_file, int sample_rate,
+                 int channels, const std::string& format, int compression_level,
+                 bool enable_normalize, bool enable_highpass, float highpass_freq
 #ifdef ENABLE_RNNOISE
-                 , bool enable_rnnoise = false, bool rnnoise_vad = false
+                 ,
+                 bool enable_rnnoise = false, bool rnnoise_vad = false
 #endif
-                 ) {
+) {
     using namespace ffvoice;
 
     std::cout << "Recording audio:\n";
     std::cout << "  Device: " << device_id << "\n";
     std::cout << "  Sample rate: " << sample_rate << " Hz\n";
     std::cout << "  Channels: " << channels << "\n";
-    std::cout << "  Duration: " << (duration == 0 ? "unlimited" : std::to_string(duration) + "s") << "\n";
+    std::cout << "  Duration: " << (duration == 0 ? "unlimited" : std::to_string(duration) + "s")
+              << "\n";
     std::cout << "  Format: " << format << "\n";
     if (format == "flac") {
         std::cout << "  Compression: level " << compression_level << "\n";
@@ -293,25 +292,19 @@ int record_audio(int device_id, int duration, const std::string& output_file,
 
         // Processing order: High-pass -> RNNoise -> Normalize
         if (enable_highpass) {
-            processor_chain->AddProcessor(
-                std::make_unique<HighPassFilter>(highpass_freq)
-            );
+            processor_chain->AddProcessor(std::make_unique<HighPassFilter>(highpass_freq));
         }
 
 #ifdef ENABLE_RNNOISE
         if (enable_rnnoise) {
             RNNoiseConfig config;
             config.enable_vad = rnnoise_vad;
-            processor_chain->AddProcessor(
-                std::make_unique<RNNoiseProcessor>(config)
-            );
+            processor_chain->AddProcessor(std::make_unique<RNNoiseProcessor>(config));
         }
 #endif
 
         if (enable_normalize) {
-            processor_chain->AddProcessor(
-                std::make_unique<VolumeNormalizer>()
-            );
+            processor_chain->AddProcessor(std::make_unique<VolumeNormalizer>());
         }
 
         // Initialize the processor chain
@@ -379,14 +372,16 @@ int record_audio(int device_id, int duration, const std::string& output_file,
 
         if (duration > 0) {
             auto elapsed = std::chrono::steady_clock::now() - start_time;
-            auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+            auto elapsed_seconds =
+                std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
 
             if (elapsed_seconds >= duration) {
                 break;
             }
 
             // Print progress
-            std::cout << "\rRecording: " << elapsed_seconds << "s / " << duration << "s" << std::flush;
+            std::cout << "\rRecording: " << elapsed_seconds << "s / " << duration << "s"
+                      << std::flush;
         }
     }
 
@@ -404,14 +399,13 @@ int record_audio(int device_id, int duration, const std::string& output_file,
 
     double duration_sec = static_cast<double>(total_samples) / (sample_rate * channels);
     std::cout << "\nRecording complete!\n";
-    std::cout << "  Captured: " << total_samples << " samples ("
-              << duration_sec << " seconds)\n";
+    std::cout << "  Captured: " << total_samples << " samples (" << duration_sec << " seconds)\n";
     std::cout << "  Saved to: " << output_file << "\n";
 
     if (format == "flac") {
         double ratio = flac_writer.GetCompressionRatio();
-        std::cout << "  Compression ratio: " << std::fixed << std::setprecision(2)
-                  << ratio << "x\n";
+        std::cout << "  Compression ratio: " << std::fixed << std::setprecision(2) << ratio
+                  << "x\n";
     }
 
     std::cout << "\nPlay with: afplay " << output_file << "\n";
@@ -451,20 +445,22 @@ int main(int argc, char* argv[]) {
         // Parse transcription arguments
         if (argc < 3) {
             std::cerr << "Error: --transcribe requires an audio file\n";
-            std::cerr << "Usage: " << argv[0] << " --transcribe input.wav -o output.txt [OPTIONS]\n";
+            std::cerr << "Usage: " << argv[0]
+                      << " --transcribe input.wav -o output.txt [OPTIONS]\n";
             return 1;
         }
 
         std::string audio_file = argv[2];
         std::string output_file;
-        std::string format = "txt";      // default: plain text
-        std::string language = "auto";   // default: auto-detect
+        std::string format = "txt";     // default: plain text
+        std::string language = "auto";  // default: auto-detect
 
         // Parse options
         for (int i = 3; i < argc; ++i) {
             std::string arg = argv[i];
 
-            if (i + 1 >= argc) break;
+            if (i + 1 >= argc)
+                break;
             std::string value = argv[i + 1];
 
             if (arg == "-o" || arg == "--output") {
@@ -532,7 +528,8 @@ int main(int argc, char* argv[]) {
 #endif
 
             // Handle arguments with values
-            if (i + 1 >= argc) break;
+            if (i + 1 >= argc)
+                break;
 
             std::string value = argv[i + 1];
 
@@ -576,13 +573,13 @@ int main(int argc, char* argv[]) {
             format = "flac";
         }
 
-        return record_audio(device_id, duration, output_file, sample_rate,
-                           channels, format, compression_level,
-                           enable_normalize, enable_highpass, highpass_freq
+        return record_audio(device_id, duration, output_file, sample_rate, channels, format,
+                            compression_level, enable_normalize, enable_highpass, highpass_freq
 #ifdef ENABLE_RNNOISE
-                           , enable_rnnoise, rnnoise_vad
+                            ,
+                            enable_rnnoise, rnnoise_vad
 #endif
-                           );
+        );
     }
 
     std::cout << "ffvoice-engine - Audio recording starting...\n";

@@ -11,4 +11,4 @@ namespace ffvoice {
 
 // Placeholder - will implement later
 
-} // namespace ffvoice
+}  // namespace ffvoice

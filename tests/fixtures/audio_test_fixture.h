@@ -9,14 +9,15 @@
 #ifndef FFVOICE_TESTS_FIXTURES_AUDIO_TEST_FIXTURE_H
 #define FFVOICE_TESTS_FIXTURES_AUDIO_TEST_FIXTURE_H
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <vector>
-#include <memory>
+#include <gtest/gtest.h>
+
 #include <cmath>
 #include <cstdint>
-#include <string>
 #include <fstream>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace ffvoice {
 namespace test {
@@ -25,10 +26,10 @@ namespace test {
  * @brief Audio format configuration for tests
  */
 struct AudioConfig {
-    uint32_t sample_rate = 16000;    // Sample rate in Hz
-    uint16_t channels = 1;           // Number of channels (1=mono, 2=stereo)
-    uint16_t bits_per_sample = 16;   // Bits per sample (8, 16, 24, 32)
-    size_t buffer_size = 1024;       // Buffer size in frames
+    uint32_t sample_rate = 16000;   // Sample rate in Hz
+    uint16_t channels = 1;          // Number of channels (1=mono, 2=stereo)
+    uint16_t bits_per_sample = 16;  // Bits per sample (8, 16, 24, 32)
+    size_t buffer_size = 1024;      // Buffer size in frames
 
     /**
      * @brief Calculate bytes per frame
@@ -111,11 +112,8 @@ protected:
      * @param amplitude Amplitude (0.0 to 1.0)
      * @return Vector of audio samples (sine wave)
      */
-    std::vector<int16_t> GenerateSineWave(
-        double frequency,
-        uint32_t duration_ms,
-        double amplitude = 0.5
-    ) {
+    std::vector<int16_t> GenerateSineWave(double frequency, uint32_t duration_ms,
+                                          double amplitude = 0.5) {
         size_t num_samples = (config_.sample_rate * duration_ms) / 1000;
         std::vector<int16_t> samples(num_samples);
 
@@ -138,10 +136,7 @@ protected:
      * @param amplitude Amplitude (0.0 to 1.0)
      * @return Vector of audio samples (white noise)
      */
-    std::vector<int16_t> GenerateWhiteNoise(
-        uint32_t duration_ms,
-        double amplitude = 0.1
-    ) {
+    std::vector<int16_t> GenerateWhiteNoise(uint32_t duration_ms, double amplitude = 0.1) {
         size_t num_samples = (config_.sample_rate * duration_ms) / 1000;
         std::vector<int16_t> samples(num_samples);
 
@@ -162,7 +157,8 @@ protected:
      * @return RMS value
      */
     double CalculateRMS(const std::vector<int16_t>& samples) {
-        if (samples.empty()) return 0.0;
+        if (samples.empty())
+            return 0.0;
 
         double sum = 0.0;
         for (int16_t sample : samples) {
@@ -179,14 +175,12 @@ protected:
      * @param noise Noise samples
      * @return SNR in dB
      */
-    double CalculateSNR(
-        const std::vector<int16_t>& signal,
-        const std::vector<int16_t>& noise
-    ) {
+    double CalculateSNR(const std::vector<int16_t>& signal, const std::vector<int16_t>& noise) {
         double signal_rms = CalculateRMS(signal);
         double noise_rms = CalculateRMS(noise);
 
-        if (noise_rms == 0.0) return INFINITY;
+        if (noise_rms == 0.0)
+            return INFINITY;
 
         return 20.0 * std::log10(signal_rms / noise_rms);
     }
@@ -199,12 +193,10 @@ protected:
      * @param tolerance Maximum allowed difference per sample
      * @return True if buffers match within tolerance
      */
-    bool CompareAudioBuffers(
-        const std::vector<int16_t>& expected,
-        const std::vector<int16_t>& actual,
-        int16_t tolerance = 1
-    ) {
-        if (expected.size() != actual.size()) return false;
+    bool CompareAudioBuffers(const std::vector<int16_t>& expected,
+                             const std::vector<int16_t>& actual, int16_t tolerance = 1) {
+        if (expected.size() != actual.size())
+            return false;
 
         for (size_t i = 0; i < expected.size(); ++i) {
             int16_t diff = std::abs(expected[i] - actual[i]);
@@ -224,7 +216,8 @@ protected:
      */
     void WriteWavFile(const std::string& filename, const std::vector<int16_t>& samples) {
         std::ofstream file(filename, std::ios::binary);
-        if (!file) return;
+        if (!file)
+            return;
 
         // WAV header (simplified, mono 16-bit PCM)
         uint32_t data_size = samples.size() * sizeof(int16_t);
@@ -239,7 +232,7 @@ protected:
         file.write("fmt ", 4);
         uint32_t fmt_size = 16;
         file.write(reinterpret_cast<const char*>(&fmt_size), 4);
-        uint16_t audio_format = 1; // PCM
+        uint16_t audio_format = 1;  // PCM
         file.write(reinterpret_cast<const char*>(&audio_format), 2);
         file.write(reinterpret_cast<const char*>(&config_.channels), 2);
         file.write(reinterpret_cast<const char*>(&config_.sample_rate), 4);
@@ -266,10 +259,10 @@ protected:
     }
 
     // Protected member variables
-    AudioConfig config_;                      // Current audio configuration
-    std::vector<uint8_t> input_buffer_;       // Input buffer
-    std::vector<uint8_t> output_buffer_;      // Output buffer
-    std::vector<std::string> temp_files_;     // Temporary files to cleanup
+    AudioConfig config_;                   // Current audio configuration
+    std::vector<uint8_t> input_buffer_;    // Input buffer
+    std::vector<uint8_t> output_buffer_;   // Output buffer
+    std::vector<std::string> temp_files_;  // Temporary files to cleanup
 };
 
 /**
@@ -323,7 +316,7 @@ protected:
     }
 };
 
-} // namespace test
-} // namespace ffvoice
+}  // namespace test
+}  // namespace ffvoice
 
-#endif // FFVOICE_TESTS_FIXTURES_AUDIO_TEST_FIXTURE_H
+#endif  // FFVOICE_TESTS_FIXTURES_AUDIO_TEST_FIXTURE_H

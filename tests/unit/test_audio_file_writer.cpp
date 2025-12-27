@@ -5,14 +5,17 @@
  *          as the production code hasn't been implemented yet
  */
 
-#include <gtest/gtest.h>
 #include "media/audio_file_writer.h"
-#include "mocks/mock_file_system.h"
-#include "fixtures/audio_test_fixture.h"
-#include "utils/test_signal_generator.h"
 #include "utils/test_helpers.h"
-#include <fstream>
+#include "utils/test_signal_generator.h"
+
+#include <gtest/gtest.h>
+
 #include <filesystem>
+#include <fstream>
+
+#include "fixtures/audio_test_fixture.h"
+#include "mocks/mock_file_system.h"
 
 namespace ffvoice {
 namespace test {
@@ -66,35 +69,29 @@ TEST_F(AudioFileWriterTest, WriteValidWAVFile16Bit) {
 
     std::string output_path = getTestFilePath("test_16bit.wav");
 
-    EXPECT_TRUE(writer_->open(output_path, config))
-        << "Should open WAV file for writing";
+    EXPECT_TRUE(writer_->open(output_path, config)) << "Should open WAV file for writing";
 
     // Generate test signal
     TestSignalGenerator generator;
     auto sine_wave = generator.generateSineWave(440.0f, 44100, 1.0f, 2);
 
     // Write audio data
-    EXPECT_TRUE(writer_->write(sine_wave.data(), sine_wave.size()))
-        << "Should write audio data";
+    EXPECT_TRUE(writer_->write(sine_wave.data(), sine_wave.size())) << "Should write audio data";
 
-    EXPECT_TRUE(writer_->close())
-        << "Should close file successfully";
+    EXPECT_TRUE(writer_->close()) << "Should close file successfully";
 
     // Verify file exists and has correct size
-    EXPECT_TRUE(fs::exists(output_path))
-        << "Output file should exist";
+    EXPECT_TRUE(fs::exists(output_path)) << "Output file should exist";
 
     auto file_size = fs::file_size(output_path);
-    size_t expected_size = 44 + sine_wave.size() * sizeof(int16_t); // WAV header + data
-    EXPECT_NEAR(file_size, expected_size, 100)
-        << "File size should match expected";
+    size_t expected_size = 44 + sine_wave.size() * sizeof(int16_t);  // WAV header + data
+    EXPECT_NEAR(file_size, expected_size, 100) << "File size should match expected";
 
     // Verify WAV header
     std::ifstream file(output_path, std::ios::binary);
     char riff_header[4];
     file.read(riff_header, 4);
-    EXPECT_EQ(std::string(riff_header, 4), "RIFF")
-        << "Should have RIFF header";
+    EXPECT_EQ(std::string(riff_header, 4), "RIFF") << "Should have RIFF header";
 }
 
 TEST_F(AudioFileWriterTest, WriteValidWAVFile24Bit) {
@@ -107,8 +104,7 @@ TEST_F(AudioFileWriterTest, WriteValidWAVFile24Bit) {
 
     std::string output_path = getTestFilePath("test_24bit.wav");
 
-    EXPECT_TRUE(writer_->open(output_path, config))
-        << "Should open 24-bit WAV file";
+    EXPECT_TRUE(writer_->open(output_path, config)) << "Should open 24-bit WAV file";
 
     TestSignalGenerator generator;
     auto sine_wave = generator.generateSineWave(1000.0f, 48000, 0.5f, 2);
@@ -116,8 +112,7 @@ TEST_F(AudioFileWriterTest, WriteValidWAVFile24Bit) {
     EXPECT_TRUE(writer_->write(sine_wave.data(), sine_wave.size()))
         << "Should write 24-bit audio data";
 
-    EXPECT_TRUE(writer_->close())
-        << "Should close file successfully";
+    EXPECT_TRUE(writer_->close()) << "Should close file successfully";
 
     // Verify file properties
     AudioFileReader reader;
@@ -141,7 +136,7 @@ TEST_F(AudioFileWriterTest, VerifyWAVHeaderCorrectness) {
     ASSERT_TRUE(writer_->open(output_path, config));
 
     // Write known amount of data
-    const size_t num_samples = 44100; // 1 second
+    const size_t num_samples = 44100;  // 1 second
     std::vector<float> data(num_samples, 0.0f);
     ASSERT_TRUE(writer_->write(data.data(), data.size()));
     ASSERT_TRUE(writer_->close());
@@ -177,7 +172,8 @@ TEST_F(AudioFileWriterTest, VerifyWAVHeaderCorrectness) {
     EXPECT_EQ(header.num_channels, 1);
     EXPECT_EQ(header.sample_rate, 44100);
     EXPECT_EQ(header.bits_per_sample, 16);
-    EXPECT_EQ(header.byte_rate, 44100 * 1 * 2) << "ByteRate = SampleRate * Channels * BytesPerSample";
+    EXPECT_EQ(header.byte_rate, 44100 * 1 * 2)
+        << "ByteRate = SampleRate * Channels * BytesPerSample";
     EXPECT_EQ(header.block_align, 1 * 2) << "BlockAlign = Channels * BytesPerSample";
     EXPECT_EQ(header.data_size, num_samples * 2) << "Data size should match written samples";
 }
@@ -195,13 +191,12 @@ TEST_F(AudioFileWriterTest, HandleLargeWAVFiles) {
     ASSERT_TRUE(writer_->open(output_path, config));
 
     // Write data in chunks to simulate large file
-    const size_t chunk_size = 48000 * 2; // 1 second stereo
+    const size_t chunk_size = 48000 * 2;  // 1 second stereo
     std::vector<float> chunk(chunk_size, 0.0f);
 
     // Write 100 seconds of audio (should be < 2GB for standard WAV)
     for (int i = 0; i < 100; ++i) {
-        EXPECT_TRUE(writer_->write(chunk.data(), chunk.size()))
-            << "Should write chunk " << i;
+        EXPECT_TRUE(writer_->write(chunk.data(), chunk.size())) << "Should write chunk " << i;
     }
 
     EXPECT_TRUE(writer_->close());
@@ -213,13 +208,12 @@ TEST_F(AudioFileWriterTest, HandleLargeWAVFiles) {
 
     // Test > 4GB (should switch to WAV64 or error)
     std::string large_output = getTestFilePath("test_4gb.wav");
-    config.enable_wav64 = true; // Enable WAV64 for large files
+    config.enable_wav64 = true;  // Enable WAV64 for large files
 
     ASSERT_TRUE(writer_->open(large_output, config));
 
     // Note: Actually writing 4GB would be slow, so we test the API
-    EXPECT_TRUE(writer_->supportsLargeFiles())
-        << "Should support large files with WAV64";
+    EXPECT_TRUE(writer_->supportsLargeFiles()) << "Should support large files with WAV64";
 }
 
 TEST_F(AudioFileWriterTest, WriteMonoAndStereoWAV) {
@@ -231,7 +225,7 @@ TEST_F(AudioFileWriterTest, WriteMonoAndStereoWAV) {
         AudioFileConfig config;
         config.format = AudioFileFormat::WAV;
         config.sample_rate = 44100;
-        config.channels = 1; // Mono
+        config.channels = 1;  // Mono
         config.bit_depth = 16;
 
         std::string output_path = getTestFilePath("test_mono.wav");
@@ -252,7 +246,7 @@ TEST_F(AudioFileWriterTest, WriteMonoAndStereoWAV) {
         AudioFileConfig config;
         config.format = AudioFileFormat::WAV;
         config.sample_rate = 44100;
-        config.channels = 2; // Stereo
+        config.channels = 2;  // Stereo
         config.bit_depth = 16;
 
         std::string output_path = getTestFilePath("test_stereo.wav");
@@ -284,8 +278,7 @@ TEST_F(AudioFileWriterTest, WriteValidFLACFile) {
 
     std::string output_path = getTestFilePath("test.flac");
 
-    EXPECT_TRUE(writer_->open(output_path, config))
-        << "Should open FLAC file for writing";
+    EXPECT_TRUE(writer_->open(output_path, config)) << "Should open FLAC file for writing";
 
     TestSignalGenerator generator;
     auto sine_wave = generator.generateSineWave(440.0f, 48000, 2.0f, 2);
@@ -293,8 +286,7 @@ TEST_F(AudioFileWriterTest, WriteValidFLACFile) {
     EXPECT_TRUE(writer_->write(sine_wave.data(), sine_wave.size()))
         << "Should write FLAC audio data";
 
-    EXPECT_TRUE(writer_->close())
-        << "Should close FLAC file";
+    EXPECT_TRUE(writer_->close()) << "Should close FLAC file";
 
     // Verify file exists and is valid FLAC
     EXPECT_TRUE(fs::exists(output_path));
@@ -303,14 +295,13 @@ TEST_F(AudioFileWriterTest, WriteValidFLACFile) {
     std::ifstream file(output_path, std::ios::binary);
     char flac_header[4];
     file.read(flac_header, 4);
-    EXPECT_EQ(std::string(flac_header, 4), "fLaC")
-        << "Should have FLAC header";
+    EXPECT_EQ(std::string(flac_header, 4), "fLaC") << "Should have FLAC header";
 }
 
 TEST_F(AudioFileWriterTest, TestFLACCompressionLevels) {
     // UT-WR-007: Test compression levels 0-8
     TestSignalGenerator generator;
-    auto test_signal = generator.generateWhiteNoise(48000, 1.0f, 2); // 1 second white noise
+    auto test_signal = generator.generateWhiteNoise(48000, 1.0f, 2);  // 1 second white noise
 
     std::vector<size_t> file_sizes;
 
@@ -335,7 +326,7 @@ TEST_F(AudioFileWriterTest, TestFLACCompressionLevels) {
 
     // Verify compression effectiveness (higher levels = smaller files)
     for (size_t i = 1; i < file_sizes.size(); ++i) {
-        EXPECT_LE(file_sizes[i], file_sizes[i-1] * 1.1) // Allow 10% variance
+        EXPECT_LE(file_sizes[i], file_sizes[i - 1] * 1.1)  // Allow 10% variance
             << "Higher compression level should not significantly increase file size";
     }
 
@@ -393,8 +384,7 @@ TEST_F(AudioFileWriterTest, CompareFLACFileSizes) {
         {"silence", std::vector<float>(48000 * 2, 0.0f)},
         {"sine", generator.generateSineWave(440.0f, 48000, 1.0f, 2)},
         {"noise", generator.generateWhiteNoise(48000, 1.0f, 2)},
-        {"complex", generator.generateComplexTone({440.0f, 880.0f, 1320.0f}, 48000, 1.0f, 2)}
-    };
+        {"complex", generator.generateComplexTone({440.0f, 880.0f, 1320.0f}, 48000, 1.0f, 2)}};
 
     for (const auto& test : test_cases) {
         size_t uncompressed_size = 0;
@@ -434,13 +424,11 @@ TEST_F(AudioFileWriterTest, CompareFLACFileSizes) {
 
         // Silence should compress extremely well
         if (test.name == "silence") {
-            EXPECT_GT(compression_ratio, 10.0f)
-                << "Silence should have high compression ratio";
+            EXPECT_GT(compression_ratio, 10.0f) << "Silence should have high compression ratio";
         }
         // Noise should compress poorly
         else if (test.name == "noise") {
-            EXPECT_LT(compression_ratio, 1.5f)
-                << "White noise should have low compression ratio";
+            EXPECT_LT(compression_ratio, 1.5f) << "White noise should have low compression ratio";
         }
     }
 }
@@ -458,17 +446,13 @@ TEST_F(AudioFileWriterTest, CreateOutputFileSuccessfully) {
 
     std::string output_path = getTestFilePath("test_create.wav");
 
-    EXPECT_FALSE(fs::exists(output_path))
-        << "File should not exist initially";
+    EXPECT_FALSE(fs::exists(output_path)) << "File should not exist initially";
 
-    EXPECT_TRUE(writer_->open(output_path, config))
-        << "Should create new file";
+    EXPECT_TRUE(writer_->open(output_path, config)) << "Should create new file";
 
-    EXPECT_TRUE(writer_->isOpen())
-        << "Writer should be open";
+    EXPECT_TRUE(writer_->isOpen()) << "Writer should be open";
 
-    EXPECT_TRUE(fs::exists(output_path))
-        << "File should exist after opening";
+    EXPECT_TRUE(fs::exists(output_path)) << "File should exist after opening";
 
     EXPECT_TRUE(writer_->close());
 }
@@ -487,14 +471,13 @@ TEST_F(AudioFileWriterTest, HandleFileCreationFailure) {
         << "Should fail to create file in non-existent directory";
 
     auto error = writer_->getLastError();
-    EXPECT_FALSE(error.empty())
-        << "Should provide error message";
+    EXPECT_FALSE(error.empty()) << "Should provide error message";
     EXPECT_TRUE(error.find("directory") != std::string::npos ||
                 error.find("path") != std::string::npos)
         << "Error should mention directory/path issue";
 
     // Try to write to read-only location
-    std::string readonly_path = "/sys/test.wav"; // System directory (read-only)
+    std::string readonly_path = "/sys/test.wav";  // System directory (read-only)
 
     EXPECT_FALSE(writer_->open(readonly_path, config))
         << "Should fail to create file in read-only location";
@@ -522,33 +505,28 @@ TEST_F(AudioFileWriterTest, OverwriteExistingFile) {
     // Overwrite with different data
     {
         config.overwrite_mode = OverwriteMode::OVERWRITE;
-        EXPECT_TRUE(writer_->open(output_path, config))
-            << "Should overwrite existing file";
+        EXPECT_TRUE(writer_->open(output_path, config)) << "Should overwrite existing file";
 
-        std::vector<float> data(5000, 0.1f); // Different size
+        std::vector<float> data(5000, 0.1f);  // Different size
         EXPECT_TRUE(writer_->write(data.data(), data.size()));
         EXPECT_TRUE(writer_->close());
     }
 
     auto new_size = fs::file_size(output_path);
-    EXPECT_NE(original_size, new_size)
-        << "File size should change after overwrite";
+    EXPECT_NE(original_size, new_size) << "File size should change after overwrite";
 
     // Test with protection mode
     {
         config.overwrite_mode = OverwriteMode::PROTECT;
-        EXPECT_FALSE(writer_->open(output_path, config))
-            << "Should not overwrite in PROTECT mode";
+        EXPECT_FALSE(writer_->open(output_path, config)) << "Should not overwrite in PROTECT mode";
     }
 
     // Test with backup mode
     {
         config.overwrite_mode = OverwriteMode::BACKUP;
-        EXPECT_TRUE(writer_->open(output_path, config))
-            << "Should create backup and overwrite";
+        EXPECT_TRUE(writer_->open(output_path, config)) << "Should create backup and overwrite";
 
-        EXPECT_TRUE(fs::exists(output_path + ".bak"))
-            << "Should create backup file";
+        EXPECT_TRUE(fs::exists(output_path + ".bak")) << "Should create backup file";
     }
 }
 
@@ -571,8 +549,7 @@ TEST_F(AudioFileWriterTest, FlushAndCloseProperly) {
 
         // Flush periodically
         if (i % 3 == 0) {
-            EXPECT_TRUE(writer_->flush())
-                << "Should flush buffer to disk";
+            EXPECT_TRUE(writer_->flush()) << "Should flush buffer to disk";
         }
     }
 
@@ -580,8 +557,7 @@ TEST_F(AudioFileWriterTest, FlushAndCloseProperly) {
     writer_->flush();
     auto size_before_close = fs::file_size(output_path);
 
-    EXPECT_TRUE(writer_->close())
-        << "Should close file properly";
+    EXPECT_TRUE(writer_->close()) << "Should close file properly";
 
     auto size_after_close = fs::file_size(output_path);
 
@@ -591,8 +567,7 @@ TEST_F(AudioFileWriterTest, FlushAndCloseProperly) {
 
     // Verify file is valid after close
     AudioFileReader reader;
-    EXPECT_TRUE(reader.open(output_path))
-        << "File should be readable after proper close";
+    EXPECT_TRUE(reader.open(output_path)) << "File should be readable after proper close";
 }
 
 TEST_F(AudioFileWriterTest, CleanupOnError) {
@@ -617,16 +592,14 @@ TEST_F(AudioFileWriterTest, CleanupOnError) {
         << "Write should fail with simulated error";
 
     // Writer should clean up
-    writer_->abort(); // Abort and cleanup
+    writer_->abort();  // Abort and cleanup
 
-    EXPECT_FALSE(writer_->isOpen())
-        << "Writer should be closed after abort";
+    EXPECT_FALSE(writer_->isOpen()) << "Writer should be closed after abort";
 
     // Depending on implementation, file might be deleted or marked invalid
     if (fs::exists(output_path)) {
         auto file_size = fs::file_size(output_path);
-        EXPECT_EQ(file_size, 0)
-            << "Aborted file should be empty or deleted";
+        EXPECT_EQ(file_size, 0) << "Aborted file should be empty or deleted";
     }
 }
 
@@ -659,18 +632,17 @@ TEST_F(AudioFileWriterTest, WriteAndVerifySineWave) {
     ASSERT_TRUE(reader.open(output_path));
 
     std::vector<float> read_signal(original_signal.size());
-    ASSERT_EQ(reader.read(read_signal.data(), read_signal.size()),
-              original_signal.size());
+    ASSERT_EQ(reader.read(read_signal.data(), read_signal.size()), original_signal.size());
 
     // Analyze the read signal
     AudioAnalyzer analyzer;
     auto detected_freq = analyzer.detectFrequency(read_signal.data(), read_signal.size(), 48000);
 
-    EXPECT_NEAR(detected_freq, frequency, 10.0f)
-        << "Detected frequency should match original";
+    EXPECT_NEAR(detected_freq, frequency, 10.0f) << "Detected frequency should match original";
 
     // Calculate SNR
-    auto snr = analyzer.calculateSNR(original_signal.data(), read_signal.data(), original_signal.size());
+    auto snr =
+        analyzer.calculateSNR(original_signal.data(), read_signal.data(), original_signal.size());
     EXPECT_GT(snr, 50.0f) << "SNR should be high for lossless encoding";
 }
 
@@ -696,7 +668,7 @@ TEST_F(AudioFileWriterTest, VerifySampleCountAccuracy) {
     AudioFileReader reader;
     ASSERT_TRUE(reader.open(output_path));
 
-    EXPECT_EQ(reader.getTotalSamples(), num_samples / 2) // Stereo: frames = samples / channels
+    EXPECT_EQ(reader.getTotalSamples(), num_samples / 2)  // Stereo: frames = samples / channels
         << "Sample count should match exactly";
 
     EXPECT_EQ(reader.getDuration(), static_cast<double>(num_samples / 2) / 44100.0)
@@ -757,7 +729,7 @@ TEST_F(AudioFileWriterTest, TestWithZeroFilledBuffers) {
     ASSERT_TRUE(writer_->open(output_path, config));
 
     // Write silence
-    std::vector<float> silence(48000, 0.0f); // 1 second of silence
+    std::vector<float> silence(48000, 0.0f);  // 1 second of silence
     ASSERT_TRUE(writer_->write(silence.data(), silence.size()));
     ASSERT_TRUE(writer_->close());
 
@@ -770,8 +742,7 @@ TEST_F(AudioFileWriterTest, TestWithZeroFilledBuffers) {
 
     // All samples should be zero
     for (size_t i = 0; i < read_data.size(); ++i) {
-        EXPECT_EQ(read_data[i], 0.0f)
-            << "Sample " << i << " should be zero";
+        EXPECT_EQ(read_data[i], 0.0f) << "Sample " << i << " should be zero";
     }
 }
 
@@ -791,8 +762,8 @@ TEST_F(AudioFileWriterTest, TestWithFullScaleAudio) {
     std::vector<float> fullscale;
     for (int i = 0; i < 48000; ++i) {
         float value = (i % 100 < 50) ? 1.0f : -1.0f;
-        fullscale.push_back(value); // Left
-        fullscale.push_back(value); // Right
+        fullscale.push_back(value);  // Left
+        fullscale.push_back(value);  // Right
     }
 
     ASSERT_TRUE(writer_->write(fullscale.data(), fullscale.size()));
@@ -818,5 +789,5 @@ TEST_F(AudioFileWriterTest, TestWithFullScaleAudio) {
     EXPECT_EQ(clipped_samples, 0) << "No samples should be clipped";
 }
 
-} // namespace test
-} // namespace ffvoice
+}  // namespace test
+}  // namespace ffvoice

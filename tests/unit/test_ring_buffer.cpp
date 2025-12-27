@@ -5,13 +5,15 @@
  *          as the production code hasn't been implemented yet
  */
 
-#include <gtest/gtest.h>
 #include "utils/ring_buffer.h"
-#include <thread>
+
+#include <gtest/gtest.h>
+
 #include <atomic>
 #include <chrono>
-#include <vector>
 #include <random>
+#include <thread>
+#include <vector>
 
 namespace ffvoice {
 namespace test {
@@ -20,7 +22,7 @@ namespace test {
  * Test Suite: RingBufferTest
  * Tests lock-free single-producer single-consumer ring buffer
  */
-template<typename T>
+template <typename T>
 class RingBufferTest : public ::testing::Test {
 protected:
     static constexpr size_t DEFAULT_SIZE = 1024;
@@ -43,41 +45,31 @@ TYPED_TEST(RingBufferTest, CreateBufferWithValidSize) {
     // UT-BUF-001: Create buffer with valid size
     RingBuffer<TypeParam> buffer(256);
 
-    EXPECT_EQ(buffer.capacity(), 256)
-        << "Buffer capacity should match requested size";
+    EXPECT_EQ(buffer.capacity(), 256) << "Buffer capacity should match requested size";
 
-    EXPECT_EQ(buffer.size(), 0)
-        << "New buffer should be empty";
+    EXPECT_EQ(buffer.size(), 0) << "New buffer should be empty";
 
-    EXPECT_TRUE(buffer.empty())
-        << "New buffer should report as empty";
+    EXPECT_TRUE(buffer.empty()) << "New buffer should report as empty";
 
-    EXPECT_FALSE(buffer.full())
-        << "New buffer should not be full";
+    EXPECT_FALSE(buffer.full()) << "New buffer should not be full";
 }
 
 TYPED_TEST(RingBufferTest, WriteAndReadData) {
     // UT-BUF-002: Write and read data
     const TypeParam test_value = static_cast<TypeParam>(42);
 
-    EXPECT_TRUE(this->buffer_->push(test_value))
-        << "Should successfully push to empty buffer";
+    EXPECT_TRUE(this->buffer_->push(test_value)) << "Should successfully push to empty buffer";
 
-    EXPECT_EQ(this->buffer_->size(), 1)
-        << "Size should be 1 after push";
+    EXPECT_EQ(this->buffer_->size(), 1) << "Size should be 1 after push";
 
-    EXPECT_FALSE(this->buffer_->empty())
-        << "Buffer should not be empty after push";
+    EXPECT_FALSE(this->buffer_->empty()) << "Buffer should not be empty after push";
 
     TypeParam read_value;
-    EXPECT_TRUE(this->buffer_->pop(read_value))
-        << "Should successfully pop from buffer";
+    EXPECT_TRUE(this->buffer_->pop(read_value)) << "Should successfully pop from buffer";
 
-    EXPECT_EQ(read_value, test_value)
-        << "Read value should match written value";
+    EXPECT_EQ(read_value, test_value) << "Read value should match written value";
 
-    EXPECT_TRUE(this->buffer_->empty())
-        << "Buffer should be empty after pop";
+    EXPECT_TRUE(this->buffer_->empty()) << "Buffer should be empty after pop";
 }
 
 TYPED_TEST(RingBufferTest, HandleFullBuffer) {
@@ -85,43 +77,36 @@ TYPED_TEST(RingBufferTest, HandleFullBuffer) {
     // Fill the buffer
     for (size_t i = 0; i < this->buffer_->capacity(); ++i) {
         TypeParam value = static_cast<TypeParam>(i);
-        EXPECT_TRUE(this->buffer_->push(value))
-            << "Should push value " << i;
+        EXPECT_TRUE(this->buffer_->push(value)) << "Should push value " << i;
     }
 
-    EXPECT_TRUE(this->buffer_->full())
-        << "Buffer should be full";
+    EXPECT_TRUE(this->buffer_->full()) << "Buffer should be full";
 
     EXPECT_EQ(this->buffer_->size(), this->buffer_->capacity())
         << "Size should equal capacity when full";
 
     // Try to push one more - should fail
     TypeParam extra_value = static_cast<TypeParam>(999);
-    EXPECT_FALSE(this->buffer_->push(extra_value))
-        << "Should fail to push to full buffer";
+    EXPECT_FALSE(this->buffer_->push(extra_value)) << "Should fail to push to full buffer";
 
     // Read one and push again
     TypeParam read_value;
     EXPECT_TRUE(this->buffer_->pop(read_value));
-    EXPECT_TRUE(this->buffer_->push(extra_value))
-        << "Should push after making space";
+    EXPECT_TRUE(this->buffer_->push(extra_value)) << "Should push after making space";
 }
 
 TYPED_TEST(RingBufferTest, HandleEmptyBuffer) {
     // UT-BUF-004: Handle empty buffer
-    EXPECT_TRUE(this->buffer_->empty())
-        << "New buffer should be empty";
+    EXPECT_TRUE(this->buffer_->empty()) << "New buffer should be empty";
 
     TypeParam value;
-    EXPECT_FALSE(this->buffer_->pop(value))
-        << "Should fail to pop from empty buffer";
+    EXPECT_FALSE(this->buffer_->pop(value)) << "Should fail to pop from empty buffer";
 
     // Value should be unchanged
     TypeParam original = static_cast<TypeParam>(123);
     value = original;
     EXPECT_FALSE(this->buffer_->pop(value));
-    EXPECT_EQ(value, original)
-        << "Failed pop should not modify output parameter";
+    EXPECT_EQ(value, original) << "Failed pop should not modify output parameter";
 }
 
 TYPED_TEST(RingBufferTest, TestCapacityAndAvailableSpace) {
@@ -197,7 +182,7 @@ TYPED_TEST(RingBufferTest, ConcurrentSingleProducerSingleConsumer) {
                 read_values.push_back(value);
                 items_read++;
             } else if (all_written.load() && this->buffer_->empty()) {
-                break; // No more data coming
+                break;  // No more data coming
             } else {
                 std::this_thread::yield();
             }
@@ -208,20 +193,16 @@ TYPED_TEST(RingBufferTest, ConcurrentSingleProducerSingleConsumer) {
     consumer.join();
 
     // Verify all data was transferred correctly
-    EXPECT_EQ(read_values.size(), num_items)
-        << "Should read all items";
+    EXPECT_EQ(read_values.size(), num_items) << "Should read all items";
 
-    EXPECT_EQ(written_values.size(), num_items)
-        << "Should write all items";
+    EXPECT_EQ(written_values.size(), num_items) << "Should write all items";
 
     // Verify data integrity
     for (size_t i = 0; i < num_items; ++i) {
-        EXPECT_EQ(read_values[i], written_values[i])
-            << "Data mismatch at index " << i;
+        EXPECT_EQ(read_values[i], written_values[i]) << "Data mismatch at index " << i;
     }
 
-    EXPECT_TRUE(this->buffer_->empty())
-        << "Buffer should be empty after consuming all data";
+    EXPECT_TRUE(this->buffer_->empty()) << "Buffer should be empty after consuming all data";
 }
 
 TYPED_TEST(RingBufferTest, NoDataCorruptionUnderLoad) {
@@ -270,8 +251,7 @@ TYPED_TEST(RingBufferTest, NoDataCorruptionUnderLoad) {
     producer.join();
     consumer.join();
 
-    EXPECT_EQ(corruption_count.load(), 0)
-        << "Should have no data corruption";
+    EXPECT_EQ(corruption_count.load(), 0) << "Should have no data corruption";
 }
 
 TYPED_TEST(RingBufferTest, LockFreePerformanceVerification) {
@@ -290,7 +270,8 @@ TYPED_TEST(RingBufferTest, LockFreePerformanceVerification) {
     }
 
     auto end = std::chrono::high_resolution_clock::now();
-    auto single_threaded_duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    auto single_threaded_duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
     // Reset buffer
     this->buffer_->clear();
@@ -324,21 +305,19 @@ TYPED_TEST(RingBufferTest, LockFreePerformanceVerification) {
 
     // Concurrent should be faster or at least comparable
     double speedup = static_cast<double>(single_threaded_duration.count()) /
-                    static_cast<double>(concurrent_duration.count());
+                     static_cast<double>(concurrent_duration.count());
 
-    EXPECT_GT(speedup, 0.5)
-        << "Concurrent performance should be at least half of single-threaded"
-        << " (actual speedup: " << speedup << "x)";
+    EXPECT_GT(speedup, 0.5) << "Concurrent performance should be at least half of single-threaded"
+                            << " (actual speedup: " << speedup << "x)";
 
     // Check operations per second
     double ops_per_second = (num_operations * 1000000.0) / concurrent_duration.count();
-    EXPECT_GT(ops_per_second, 1000000)
-        << "Should achieve at least 1M ops/second";
+    EXPECT_GT(ops_per_second, 1000000) << "Should achieve at least 1M ops/second";
 }
 
 TYPED_TEST(RingBufferTest, StressTestWithRapidWritesReads) {
     // UT-BUF-009: Stress test with rapid writes/reads
-    const size_t test_duration_ms = 1000; // 1 second stress test
+    const size_t test_duration_ms = 1000;  // 1 second stress test
     std::atomic<bool> stop_test{false};
     std::atomic<size_t> total_writes{0};
     std::atomic<size_t> total_reads{0};
@@ -387,8 +366,7 @@ TYPED_TEST(RingBufferTest, StressTestWithRapidWritesReads) {
         total_reads.fetch_add(1);
     }
 
-    EXPECT_EQ(total_writes.load(), total_reads.load())
-        << "Total writes should equal total reads";
+    EXPECT_EQ(total_writes.load(), total_reads.load()) << "Total writes should equal total reads";
 
     size_t total_operations = total_writes.load() + total_reads.load();
     double ops_per_second = (total_operations * 1000.0) / test_duration_ms;
@@ -397,15 +375,13 @@ TYPED_TEST(RingBufferTest, StressTestWithRapidWritesReads) {
         << "Should handle at least 100K operations per second under stress";
 
     // Failure rate should be reasonable (buffer full/empty conditions)
-    double write_failure_rate = static_cast<double>(write_failures.load()) /
-                               (total_writes.load() + write_failures.load());
-    double read_failure_rate = static_cast<double>(read_failures.load()) /
-                              (total_reads.load() + read_failures.load());
+    double write_failure_rate =
+        static_cast<double>(write_failures.load()) / (total_writes.load() + write_failures.load());
+    double read_failure_rate =
+        static_cast<double>(read_failures.load()) / (total_reads.load() + read_failures.load());
 
-    EXPECT_LT(write_failure_rate, 0.5)
-        << "Write failure rate should be reasonable";
-    EXPECT_LT(read_failure_rate, 0.5)
-        << "Read failure rate should be reasonable";
+    EXPECT_LT(write_failure_rate, 0.5) << "Write failure rate should be reasonable";
+    EXPECT_LT(read_failure_rate, 0.5) << "Read failure rate should be reasonable";
 }
 
 // ============================================================================
@@ -439,7 +415,7 @@ TEST(RingBufferEdgeCaseTest, BufferSizeOne) {
 
 TEST(RingBufferEdgeCaseTest, BufferSizeMax) {
     // UT-BUF-011: Buffer size = max size
-    const size_t max_size = 1024 * 1024; // 1MB elements
+    const size_t max_size = 1024 * 1024;  // 1MB elements
     RingBuffer<uint8_t> large_buffer(max_size);
 
     EXPECT_EQ(large_buffer.capacity(), max_size);
@@ -518,8 +494,7 @@ TEST(RingBufferEdgeCaseTest, WrapAroundBehavior) {
         actual.push_back(value);
     }
 
-    EXPECT_EQ(actual, expected)
-        << "Wrap-around should preserve order";
+    EXPECT_EQ(actual, expected) << "Wrap-around should preserve order";
 }
 
 // ============================================================================
@@ -548,8 +523,7 @@ TEST(RingBufferBatchTest, BatchPushAndPop) {
         << "Should pop all items in batch";
 
     // Verify data
-    EXPECT_EQ(batch_in, batch_out)
-        << "Batch data should match";
+    EXPECT_EQ(batch_in, batch_out) << "Batch data should match";
 }
 
 TEST(RingBufferBatchTest, PartialBatchOperations) {
@@ -566,7 +540,7 @@ TEST(RingBufferBatchTest, PartialBatchOperations) {
     std::iota(batch_in.begin(), batch_in.end(), 100);
 
     size_t pushed = buffer.push_bulk(batch_in.data(), batch_in.size());
-    EXPECT_EQ(pushed, 20) // Only 20 spaces left
+    EXPECT_EQ(pushed, 20)  // Only 20 spaces left
         << "Should push only available space";
 
     EXPECT_TRUE(buffer.full());
@@ -574,11 +548,11 @@ TEST(RingBufferBatchTest, PartialBatchOperations) {
     // Pop partial
     std::vector<int> batch_out(100);
     size_t popped = buffer.pop_bulk(batch_out.data(), batch_out.size());
-    EXPECT_EQ(popped, 50) // Only 50 items in buffer
+    EXPECT_EQ(popped, 50)  // Only 50 items in buffer
         << "Should pop only available items";
 
     EXPECT_TRUE(buffer.empty());
 }
 
-} // namespace test
-} // namespace ffvoice
+}  // namespace test
+}  // namespace ffvoice

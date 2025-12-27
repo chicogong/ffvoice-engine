@@ -6,10 +6,11 @@
  * global test environment settings for ffvoice-engine tests.
  */
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <iostream>
+#include <gtest/gtest.h>
+
 #include <cstdlib>
+#include <iostream>
 
 /**
  * @class GlobalTestEnvironment
@@ -31,19 +32,19 @@ public:
     void SetUp() override {
         std::cout << "=== Setting up global test environment ===" << std::endl;
 
-        // Set environment variables for testing
-        #ifdef _WIN32
-            _putenv_s("FFVOICE_TEST_MODE", "1");
-        #else
-            setenv("FFVOICE_TEST_MODE", "1", 1);
-        #endif
+// Set environment variables for testing
+#ifdef _WIN32
+        _putenv_s("FFVOICE_TEST_MODE", "1");
+#else
+        setenv("FFVOICE_TEST_MODE", "1", 1);
+#endif
 
-        // Disable audio device initialization in test mode
-        #ifdef _WIN32
-            _putenv_s("FFVOICE_DISABLE_AUDIO", "1");
-        #else
-            setenv("FFVOICE_DISABLE_AUDIO", "1", 1);
-        #endif
+// Disable audio device initialization in test mode
+#ifdef _WIN32
+        _putenv_s("FFVOICE_DISABLE_AUDIO", "1");
+#else
+        setenv("FFVOICE_DISABLE_AUDIO", "1", 1);
+#endif
 
         std::cout << "Test mode enabled" << std::endl;
         std::cout << "Audio devices disabled for testing" << std::endl;
@@ -70,21 +71,17 @@ class VerboseTestEventListener : public ::testing::EmptyTestEventListener {
 private:
     void OnTestStart(const ::testing::TestInfo& test_info) override {
         std::cout << std::endl;
-        std::cout << "[ RUN      ] " << test_info.test_suite_name()
-                  << "." << test_info.name() << std::endl;
+        std::cout << "[ RUN      ] " << test_info.test_suite_name() << "." << test_info.name()
+                  << std::endl;
     }
 
     void OnTestEnd(const ::testing::TestInfo& test_info) override {
         if (test_info.result()->Passed()) {
-            std::cout << "[       OK ] " << test_info.test_suite_name()
-                      << "." << test_info.name()
-                      << " (" << test_info.result()->elapsed_time() << " ms)"
-                      << std::endl;
+            std::cout << "[       OK ] " << test_info.test_suite_name() << "." << test_info.name()
+                      << " (" << test_info.result()->elapsed_time() << " ms)" << std::endl;
         } else {
-            std::cout << "[  FAILED  ] " << test_info.test_suite_name()
-                      << "." << test_info.name()
-                      << " (" << test_info.result()->elapsed_time() << " ms)"
-                      << std::endl;
+            std::cout << "[  FAILED  ] " << test_info.test_suite_name() << "." << test_info.name()
+                      << " (" << test_info.result()->elapsed_time() << " ms)" << std::endl;
         }
     }
 };
@@ -118,8 +115,7 @@ int main(int argc, char** argv) {
 
     // Configure test output
     if (argc > 1 && std::string(argv[1]) == "--verbose") {
-        ::testing::TestEventListeners& listeners =
-            ::testing::UnitTest::GetInstance()->listeners();
+        ::testing::TestEventListeners& listeners = ::testing::UnitTest::GetInstance()->listeners();
         listeners.Append(new VerboseTestEventListener);
     }
 

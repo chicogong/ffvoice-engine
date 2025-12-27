@@ -10,4 +10,4 @@ namespace ffvoice {
 // TODO: Implement audio file writing
 // Placeholder for now
 
-} // namespace ffvoice
+}  // namespace ffvoice

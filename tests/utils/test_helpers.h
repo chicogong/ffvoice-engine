@@ -9,14 +9,14 @@
 #ifndef FFVOICE_TESTS_UTILS_TEST_HELPERS_H
 #define FFVOICE_TESTS_UTILS_TEST_HELPERS_H
 
-#include <vector>
-#include <string>
-#include <cstdint>
-#include <cmath>
 #include <algorithm>
 #include <chrono>
-#include <sstream>
+#include <cmath>
+#include <cstdint>
 #include <iomanip>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace ffvoice {
 namespace test {
@@ -47,12 +47,10 @@ public:
      * @param epsilon Tolerance per element
      * @return True if vectors are approximately equal
      */
-    static bool VectorsApproximatelyEqual(
-        const std::vector<double>& a,
-        const std::vector<double>& b,
-        double epsilon = 1e-6
-    ) {
-        if (a.size() != b.size()) return false;
+    static bool VectorsApproximatelyEqual(const std::vector<double>& a,
+                                          const std::vector<double>& b, double epsilon = 1e-6) {
+        if (a.size() != b.size())
+            return false;
 
         for (size_t i = 0; i < a.size(); ++i) {
             if (!ApproximatelyEqual(a[i], b[i], epsilon)) {
@@ -70,10 +68,8 @@ public:
      * @param signal2 Second signal
      * @return MSE value
      */
-    static double CalculateMSE(
-        const std::vector<int16_t>& signal1,
-        const std::vector<int16_t>& signal2
-    ) {
+    static double CalculateMSE(const std::vector<int16_t>& signal1,
+                               const std::vector<int16_t>& signal2) {
         if (signal1.size() != signal2.size() || signal1.empty()) {
             return INFINITY;
         }
@@ -94,10 +90,8 @@ public:
      * @param signal2 Second signal
      * @return Correlation coefficient (-1.0 to 1.0)
      */
-    static double CalculateCorrelation(
-        const std::vector<int16_t>& signal1,
-        const std::vector<int16_t>& signal2
-    ) {
+    static double CalculateCorrelation(const std::vector<int16_t>& signal1,
+                                       const std::vector<int16_t>& signal2) {
         if (signal1.size() != signal2.size() || signal1.empty()) {
             return 0.0;
         }
@@ -135,7 +129,8 @@ public:
      * @return RMS value
      */
     static double CalculateRMS(const std::vector<int16_t>& signal) {
-        if (signal.empty()) return 0.0;
+        if (signal.empty())
+            return 0.0;
 
         double sum = 0.0;
         for (int16_t sample : signal) {
@@ -152,7 +147,8 @@ public:
      * @return Peak amplitude (absolute value)
      */
     static int16_t CalculatePeak(const std::vector<int16_t>& signal) {
-        if (signal.empty()) return 0;
+        if (signal.empty())
+            return 0;
 
         int16_t peak = 0;
         for (int16_t sample : signal) {
@@ -172,12 +168,12 @@ public:
      * @return Number of zero crossings
      */
     static size_t CountZeroCrossings(const std::vector<int16_t>& signal) {
-        if (signal.size() < 2) return 0;
+        if (signal.size() < 2)
+            return 0;
 
         size_t count = 0;
         for (size_t i = 1; i < signal.size(); ++i) {
-            if ((signal[i-1] < 0 && signal[i] >= 0) ||
-                (signal[i-1] >= 0 && signal[i] < 0)) {
+            if ((signal[i - 1] < 0 && signal[i] >= 0) || (signal[i - 1] >= 0 && signal[i] < 0)) {
                 ++count;
             }
         }
@@ -223,7 +219,8 @@ public:
      * @return dB value
      */
     static double AmplitudeToDecibels(double amplitude, double reference = 32768.0) {
-        if (amplitude <= 0.0) return -INFINITY;
+        if (amplitude <= 0.0)
+            return -INFINITY;
         return 20.0 * std::log10(amplitude / reference);
     }
 
@@ -261,12 +258,8 @@ public:
      * @param num_samples Number of samples
      * @return WAV header bytes
      */
-    static std::vector<uint8_t> GenerateWavHeader(
-        uint32_t sample_rate,
-        uint16_t channels,
-        uint16_t bits_per_sample,
-        uint32_t num_samples
-    ) {
+    static std::vector<uint8_t> GenerateWavHeader(uint32_t sample_rate, uint16_t channels,
+                                                  uint16_t bits_per_sample, uint32_t num_samples) {
         std::vector<uint8_t> header(44);
 
         uint32_t byte_rate = sample_rate * channels * (bits_per_sample / 8);
@@ -277,22 +270,42 @@ public:
         size_t pos = 0;
 
         // RIFF header
-        header[pos++] = 'R'; header[pos++] = 'I'; header[pos++] = 'F'; header[pos++] = 'F';
-        WriteUInt32LE(header, pos, file_size); pos += 4;
-        header[pos++] = 'W'; header[pos++] = 'A'; header[pos++] = 'V'; header[pos++] = 'E';
+        header[pos++] = 'R';
+        header[pos++] = 'I';
+        header[pos++] = 'F';
+        header[pos++] = 'F';
+        WriteUInt32LE(header, pos, file_size);
+        pos += 4;
+        header[pos++] = 'W';
+        header[pos++] = 'A';
+        header[pos++] = 'V';
+        header[pos++] = 'E';
 
         // fmt chunk
-        header[pos++] = 'f'; header[pos++] = 'm'; header[pos++] = 't'; header[pos++] = ' ';
-        WriteUInt32LE(header, pos, 16); pos += 4;  // fmt chunk size
-        WriteUInt16LE(header, pos, 1); pos += 2;   // audio format (PCM)
-        WriteUInt16LE(header, pos, channels); pos += 2;
-        WriteUInt32LE(header, pos, sample_rate); pos += 4;
-        WriteUInt32LE(header, pos, byte_rate); pos += 4;
-        WriteUInt16LE(header, pos, block_align); pos += 2;
-        WriteUInt16LE(header, pos, bits_per_sample); pos += 2;
+        header[pos++] = 'f';
+        header[pos++] = 'm';
+        header[pos++] = 't';
+        header[pos++] = ' ';
+        WriteUInt32LE(header, pos, 16);
+        pos += 4;  // fmt chunk size
+        WriteUInt16LE(header, pos, 1);
+        pos += 2;  // audio format (PCM)
+        WriteUInt16LE(header, pos, channels);
+        pos += 2;
+        WriteUInt32LE(header, pos, sample_rate);
+        pos += 4;
+        WriteUInt32LE(header, pos, byte_rate);
+        pos += 4;
+        WriteUInt16LE(header, pos, block_align);
+        pos += 2;
+        WriteUInt16LE(header, pos, bits_per_sample);
+        pos += 2;
 
         // data chunk
-        header[pos++] = 'd'; header[pos++] = 'a'; header[pos++] = 't'; header[pos++] = 'a';
+        header[pos++] = 'd';
+        header[pos++] = 'a';
+        header[pos++] = 't';
+        header[pos++] = 'a';
         WriteUInt32LE(header, pos, data_size);
 
         return header;
@@ -305,16 +318,13 @@ public:
      * @param max_bytes Maximum bytes to format (0 = all)
      * @return Hex string
      */
-    static std::string BytesToHexString(
-        const std::vector<uint8_t>& data,
-        size_t max_bytes = 16
-    ) {
+    static std::string BytesToHexString(const std::vector<uint8_t>& data, size_t max_bytes = 16) {
         std::ostringstream oss;
         size_t count = (max_bytes > 0) ? std::min(max_bytes, data.size()) : data.size();
 
         for (size_t i = 0; i < count; ++i) {
-            oss << std::hex << std::setw(2) << std::setfill('0')
-                << static_cast<int>(data[i]) << " ";
+            oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[i])
+                << " ";
         }
 
         if (max_bytes > 0 && data.size() > max_bytes) {
@@ -330,7 +340,7 @@ public:
      * @param func Function to measure
      * @return Execution time in milliseconds
      */
-    template<typename Func>
+    template <typename Func>
     static double MeasureExecutionTime(Func func) {
         auto start = std::chrono::high_resolution_clock::now();
         func();
@@ -348,7 +358,7 @@ public:
      * @param max Maximum value (inclusive)
      * @return True if value is in range
      */
-    template<typename T>
+    template <typename T>
     static bool InRange(T value, T min, T max) {
         return value >= min && value <= max;
     }
@@ -361,7 +371,7 @@ public:
      * @param max Maximum value
      * @return Clamped value
      */
-    template<typename T>
+    template <typename T>
     static T Clamp(T value, T min, T max) {
         return std::max(min, std::min(value, max));
     }
@@ -400,8 +410,8 @@ public:
      * @param name Timer name for logging
      */
     explicit ScopedTimer(const std::string& name)
-        : name_(name),
-          start_(std::chrono::high_resolution_clock::now()) {}
+        : name_(name), start_(std::chrono::high_resolution_clock::now()) {
+    }
 
     /**
      * @brief Destructor - stops timer and logs result
@@ -419,7 +429,9 @@ public:
      *
      * @return Elapsed time in milliseconds
      */
-    double GetElapsed() const { return elapsed_ms_; }
+    double GetElapsed() const {
+        return elapsed_ms_;
+    }
 
 private:
     std::string name_;
@@ -433,22 +445,20 @@ private:
 class AudioBufferMatcher {
 public:
     AudioBufferMatcher(const std::vector<int16_t>& expected, int16_t tolerance)
-        : expected_(expected), tolerance_(tolerance) {}
+        : expected_(expected), tolerance_(tolerance) {
+    }
 
     bool MatchAndExplain(const std::vector<int16_t>& actual, std::ostream* os) const {
         if (expected_.size() != actual.size()) {
-            *os << "Size mismatch: expected " << expected_.size()
-                << " but got " << actual.size();
+            *os << "Size mismatch: expected " << expected_.size() << " but got " << actual.size();
             return false;
         }
 
         for (size_t i = 0; i < expected_.size(); ++i) {
             int16_t diff = std::abs(expected_[i] - actual[i]);
             if (diff > tolerance_) {
-                *os << "Mismatch at index " << i
-                    << ": expected " << expected_[i]
-                    << " but got " << actual[i]
-                    << " (diff = " << diff << ", tolerance = " << tolerance_ << ")";
+                *os << "Mismatch at index " << i << ": expected " << expected_[i] << " but got "
+                    << actual[i] << " (diff = " << diff << ", tolerance = " << tolerance_ << ")";
                 return false;
             }
         }
@@ -472,14 +482,12 @@ private:
 /**
  * @brief Helper function to create audio buffer matcher
  */
-inline AudioBufferMatcher MatchesAudioBuffer(
-    const std::vector<int16_t>& expected,
-    int16_t tolerance = 1
-) {
+inline AudioBufferMatcher MatchesAudioBuffer(const std::vector<int16_t>& expected,
+                                             int16_t tolerance = 1) {
     return AudioBufferMatcher(expected, tolerance);
 }
 
-} // namespace test
-} // namespace ffvoice
+}  // namespace test
+}  // namespace ffvoice
 
-#endif // FFVOICE_TESTS_UTILS_TEST_HELPERS_H
+#endif  // FFVOICE_TESTS_UTILS_TEST_HELPERS_H

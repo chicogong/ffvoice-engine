@@ -3,11 +3,12 @@
  * @brief Unit tests for SignalGenerator
  */
 
-#include <gtest/gtest.h>
-#include <cmath>
-#include <algorithm>
-
 #include "utils/signal_generator.h"
+
+#include <gtest/gtest.h>
+
+#include <algorithm>
+#include <cmath>
 
 using namespace ffvoice;
 
@@ -17,7 +18,8 @@ class SignalGeneratorTest : public ::testing::Test {
 protected:
     // Helper: Calculate RMS value
     double CalculateRMS(const std::vector<int16_t>& samples) {
-        if (samples.empty()) return 0.0;
+        if (samples.empty())
+            return 0.0;
 
         double sum = 0.0;
         for (const auto& sample : samples) {
@@ -28,12 +30,13 @@ protected:
 
     // Helper: Count zero crossings
     size_t CountZeroCrossings(const std::vector<int16_t>& samples) {
-        if (samples.size() < 2) return 0;
+        if (samples.size() < 2)
+            return 0;
 
         size_t count = 0;
         for (size_t i = 1; i < samples.size(); ++i) {
-            if ((samples[i-1] >= 0 && samples[i] < 0) ||
-                (samples[i-1] < 0 && samples[i] >= 0)) {
+            if ((samples[i - 1] >= 0 && samples[i] < 0) ||
+                (samples[i - 1] < 0 && samples[i] >= 0)) {
                 count++;
             }
         }
@@ -42,9 +45,10 @@ protected:
 
     // Helper: Find peak amplitude
     int16_t FindPeak(const std::vector<int16_t>& samples) {
-        if (samples.empty()) return 0;
+        if (samples.empty())
+            return 0;
         auto it = std::max_element(samples.begin(), samples.end(),
-            [](int16_t a, int16_t b) { return std::abs(a) < std::abs(b); });
+                                   [](int16_t a, int16_t b) { return std::abs(a) < std::abs(b); });
         return *it;
     }
 };
@@ -233,8 +237,10 @@ TEST_F(SignalGeneratorTest, WhiteNoiseDistribution) {
     // Count positive and negative samples
     int positive = 0, negative = 0;
     for (const auto& sample : samples) {
-        if (sample > 0) positive++;
-        else if (sample < 0) negative++;
+        if (sample > 0)
+            positive++;
+        else if (sample < 0)
+            negative++;
     }
 
     // Should be roughly 50/50

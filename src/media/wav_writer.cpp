@@ -4,6 +4,7 @@
  */
 
 #include "wav_writer.h"
+
 #include <cstring>
 
 namespace ffvoice {
@@ -12,9 +13,7 @@ WavWriter::~WavWriter() {
     Close();
 }
 
-bool WavWriter::Open(const std::string& filename,
-                     int sample_rate,
-                     int channels,
+bool WavWriter::Open(const std::string& filename, int sample_rate, int channels,
                      int bits_per_sample) {
     if (file_.is_open()) {
         Close();
@@ -121,4 +120,4 @@ void WavWriter::Close() {
     }
 }
 
-} // namespace ffvoice
+}  // namespace ffvoice

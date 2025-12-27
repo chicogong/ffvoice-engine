@@ -6,9 +6,9 @@
 #pragma once
 
 #include <cstdint>
+#include <fstream>
 #include <string>
 #include <vector>
-#include <fstream>
 
 namespace ffvoice {
 
@@ -35,10 +35,7 @@ public:
      * @param bits_per_sample Bits per sample (16 or 24)
      * @return true if successful
      */
-    bool Open(const std::string& filename,
-              int sample_rate,
-              int channels,
-              int bits_per_sample = 16);
+    bool Open(const std::string& filename, int sample_rate, int channels, int bits_per_sample = 16);
 
     /**
      * @brief Write PCM samples to file
@@ -61,12 +58,16 @@ public:
     /**
      * @brief Check if file is open
      */
-    bool IsOpen() const { return file_.is_open(); }
+    bool IsOpen() const {
+        return file_.is_open();
+    }
 
     /**
      * @brief Get total samples written
      */
-    size_t GetTotalSamples() const { return total_samples_; }
+    size_t GetTotalSamples() const {
+        return total_samples_;
+    }
 
 private:
     void WriteHeader();
@@ -80,4 +81,4 @@ private:
     std::streampos data_pos_ = 0;
 };
 
-} // namespace ffvoice
+}  // namespace ffvoice

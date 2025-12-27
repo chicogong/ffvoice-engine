@@ -5,11 +5,13 @@
  *          as the production code hasn't been implemented yet
  */
 
-#include <gtest/gtest.h>
 #include "audio/audio_capture_device.h"
-#include "mocks/mock_audio_device.h"
-#include "fixtures/audio_test_fixture.h"
 #include "utils/test_signal_generator.h"
+
+#include <gtest/gtest.h>
+
+#include "fixtures/audio_test_fixture.h"
+#include "mocks/mock_audio_device.h"
 
 namespace ffvoice {
 namespace test {
@@ -68,11 +70,10 @@ TEST_F(AudioCaptureDeviceTest, ValidateDeviceInfoStructure) {
     EXPECT_FALSE(device.name.empty());
     EXPECT_GE(device.id, 0);
     EXPECT_GT(device.max_input_channels, 0);
-    EXPECT_LE(device.max_input_channels, 32); // Reasonable upper limit
+    EXPECT_LE(device.max_input_channels, 32);  // Reasonable upper limit
 
     // Check supported sample rates
-    EXPECT_TRUE(device.supportsSampleRate(44100) ||
-                device.supportsSampleRate(48000))
+    EXPECT_TRUE(device.supportsSampleRate(44100) || device.supportsSampleRate(48000))
         << "Should support standard sample rates";
 }
 
@@ -81,9 +82,9 @@ TEST_F(AudioCaptureDeviceTest, HandleDeviceEnumerationFailure) {
     mock_manager_->setEnumerationError(true);
     capture_device_->setAudioManager(mock_manager_.get());
 
-    EXPECT_THROW({
-        capture_device_->listDevices();
-    }, AudioException) << "Should throw on enumeration failure";
+    EXPECT_THROW(
+        { capture_device_->listDevices(); }, AudioException)
+        << "Should throw on enumeration failure";
 }
 
 // ============================================================================
@@ -99,8 +100,7 @@ TEST_F(AudioCaptureDeviceTest, InitializeWithValidParameters) {
     config.buffer_frames = 256;
     config.format = AudioFormat::FLOAT32;
 
-    EXPECT_TRUE(capture_device_->initialize(config))
-        << "Should initialize with valid parameters";
+    EXPECT_TRUE(capture_device_->initialize(config)) << "Should initialize with valid parameters";
 
     EXPECT_EQ(capture_device_->getSampleRate(), 48000);
     EXPECT_EQ(capture_device_->getChannelCount(), 2);
@@ -111,11 +111,10 @@ TEST_F(AudioCaptureDeviceTest, RejectUnsupportedSampleRate) {
     // UT-AC-006: Reject unsupported sample rate
     AudioStreamConfig config;
     config.device_id = 0;
-    config.sample_rate = 192000; // Likely unsupported
+    config.sample_rate = 192000;  // Likely unsupported
     config.channels = 2;
 
-    EXPECT_FALSE(capture_device_->initialize(config))
-        << "Should reject unsupported sample rate";
+    EXPECT_FALSE(capture_device_->initialize(config)) << "Should reject unsupported sample rate";
 
     auto error = capture_device_->getLastError();
     EXPECT_TRUE(error.find("sample rate") != std::string::npos)
@@ -127,14 +126,12 @@ TEST_F(AudioCaptureDeviceTest, RejectInvalidChannelCount) {
     AudioStreamConfig config;
     config.device_id = 0;
     config.sample_rate = 48000;
-    config.channels = 0; // Invalid
+    config.channels = 0;  // Invalid
 
-    EXPECT_FALSE(capture_device_->initialize(config))
-        << "Should reject zero channels";
+    EXPECT_FALSE(capture_device_->initialize(config)) << "Should reject zero channels";
 
-    config.channels = 100; // Too many
-    EXPECT_FALSE(capture_device_->initialize(config))
-        << "Should reject excessive channel count";
+    config.channels = 100;  // Too many
+    EXPECT_FALSE(capture_device_->initialize(config)) << "Should reject excessive channel count";
 }
 
 TEST_F(AudioCaptureDeviceTest, HandleDeviceOpenFailure) {
@@ -147,8 +144,7 @@ TEST_F(AudioCaptureDeviceTest, HandleDeviceOpenFailure) {
     config.sample_rate = 48000;
     config.channels = 2;
 
-    EXPECT_FALSE(capture_device_->initialize(config))
-        << "Should fail when device is busy";
+    EXPECT_FALSE(capture_device_->initialize(config)) << "Should fail when device is busy";
 
     auto error = capture_device_->getLastError();
     EXPECT_TRUE(error.find("busy") != std::string::npos ||
@@ -168,23 +164,19 @@ TEST_F(AudioCaptureDeviceTest, ValidateBufferSizeConfiguration) {
 
     for (int size : buffer_sizes) {
         config.buffer_frames = size;
-        EXPECT_TRUE(capture_device_->initialize(config))
-            << "Should support buffer size " << size;
+        EXPECT_TRUE(capture_device_->initialize(config)) << "Should support buffer size " << size;
 
-        EXPECT_EQ(capture_device_->getBufferSize(), size)
-            << "Buffer size should match requested";
+        EXPECT_EQ(capture_device_->getBufferSize(), size) << "Buffer size should match requested";
 
         capture_device_->deinitialize();
     }
 
     // Test invalid buffer sizes
     config.buffer_frames = 0;
-    EXPECT_FALSE(capture_device_->initialize(config))
-        << "Should reject zero buffer size";
+    EXPECT_FALSE(capture_device_->initialize(config)) << "Should reject zero buffer size";
 
     config.buffer_frames = -1;
-    EXPECT_FALSE(capture_device_->initialize(config))
-        << "Should reject negative buffer size";
+    EXPECT_FALSE(capture_device_->initialize(config)) << "Should reject negative buffer size";
 }
 
 // ============================================================================
@@ -201,23 +193,18 @@ TEST_F(AudioCaptureDeviceTest, StartStopStreamSuccessfully) {
 
     ASSERT_TRUE(capture_device_->initialize(config));
 
-    EXPECT_FALSE(capture_device_->isStreaming())
-        << "Should not be streaming initially";
+    EXPECT_FALSE(capture_device_->isStreaming()) << "Should not be streaming initially";
 
-    EXPECT_TRUE(capture_device_->startStream())
-        << "Should start stream successfully";
+    EXPECT_TRUE(capture_device_->startStream()) << "Should start stream successfully";
 
-    EXPECT_TRUE(capture_device_->isStreaming())
-        << "Should be streaming after start";
+    EXPECT_TRUE(capture_device_->isStreaming()) << "Should be streaming after start";
 
     // Let it run briefly
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    EXPECT_TRUE(capture_device_->stopStream())
-        << "Should stop stream successfully";
+    EXPECT_TRUE(capture_device_->stopStream()) << "Should stop stream successfully";
 
-    EXPECT_FALSE(capture_device_->isStreaming())
-        << "Should not be streaming after stop";
+    EXPECT_FALSE(capture_device_->isStreaming()) << "Should not be streaming after stop";
 }
 
 TEST_F(AudioCaptureDeviceTest, ReceiveAudioDataInCallback) {
@@ -251,7 +238,7 @@ TEST_F(AudioCaptureDeviceTest, ReceiveAudioDataInCallback) {
         }
         EXPECT_TRUE(has_signal) << "Should receive non-silent audio";
 
-        return 0; // Success
+        return 0;  // Success
     });
 
     EXPECT_TRUE(capture_device_->startStream());
@@ -265,7 +252,7 @@ TEST_F(AudioCaptureDeviceTest, ReceiveAudioDataInCallback) {
     EXPECT_GT(callback_count.load(), 0) << "Should have received callbacks";
 
     // At 48kHz, 500ms = 24000 frames
-    EXPECT_NEAR(total_frames.load(), 24000, 2400) // 10% tolerance
+    EXPECT_NEAR(total_frames.load(), 24000, 2400)  // 10% tolerance
         << "Should receive expected number of frames";
 }
 
@@ -288,7 +275,7 @@ TEST_F(AudioCaptureDeviceTest, HandleCallbackErrorsGracefully) {
 
         if (call_count > 3) {
             error_count++;
-            return 1; // Return error
+            return 1;  // Return error
         }
         return 0;
     });
@@ -348,8 +335,7 @@ TEST_F(AudioCaptureDeviceTest, TestStreamRestartAfterStop) {
     EXPECT_TRUE(capture_device_->stopStream());
 
     // Second start/stop cycle
-    EXPECT_TRUE(capture_device_->startStream())
-        << "Should be able to restart after stop";
+    EXPECT_TRUE(capture_device_->startStream()) << "Should be able to restart after stop";
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_TRUE(capture_device_->stopStream());
 }
@@ -372,7 +358,7 @@ TEST_F(AudioCaptureDeviceTest, HandleStreamOverflow) {
 
     // Slow callback to trigger overflow
     capture_device_->setAudioCallback([&](const float* input, size_t frames) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Slow processing
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));  // Slow processing
         return 0;
     });
 
@@ -387,17 +373,13 @@ TEST_F(AudioCaptureDeviceTest, HandleStreamOverflow) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     EXPECT_TRUE(capture_device_->stopStream());
 
-    EXPECT_GT(overflow_count.load(), 0)
-        << "Should detect and report overflow conditions";
+    EXPECT_GT(overflow_count.load(), 0) << "Should detect and report overflow conditions";
 }
 
 TEST_F(AudioCaptureDeviceTest, HandleDeviceDisconnection) {
     // UT-AC-016: Handle device disconnection
-    mock_manager_->addMockDevice(MockAudioDevice{
-        .device_id = 99,
-        .name = "USB Microphone",
-        .removable = true
-    });
+    mock_manager_->addMockDevice(
+        MockAudioDevice{.device_id = 99, .name = "USB Microphone", .removable = true});
 
     capture_device_->setAudioManager(mock_manager_.get());
 
@@ -423,11 +405,9 @@ TEST_F(AudioCaptureDeviceTest, HandleDeviceDisconnection) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    EXPECT_TRUE(disconnection_detected.load())
-        << "Should detect device disconnection";
+    EXPECT_TRUE(disconnection_detected.load()) << "Should detect device disconnection";
 
-    EXPECT_FALSE(capture_device_->isStreaming())
-        << "Stream should stop on disconnection";
+    EXPECT_FALSE(capture_device_->isStreaming()) << "Stream should stop on disconnection";
 }
 
 TEST_F(AudioCaptureDeviceTest, CleanupOnErrorConditions) {
@@ -447,9 +427,7 @@ TEST_F(AudioCaptureDeviceTest, CleanupOnErrorConditions) {
 
     std::atomic<bool> error_handled{false};
 
-    capture_device_->setErrorCallback([&](const std::string& error) {
-        error_handled = true;
-    });
+    capture_device_->setErrorCallback([&](const std::string& error) { error_handled = true; });
 
     EXPECT_TRUE(capture_device_->startStream());
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -482,8 +460,7 @@ TEST_F(AudioCaptureDeviceTest, ThreadSafetyOfCallbacks) {
 
         // Thread-safe accumulation
         std::lock_guard<std::mutex> lock(data_mutex);
-        accumulated_data.insert(accumulated_data.end(),
-                              input, input + frames * 2);
+        accumulated_data.insert(accumulated_data.end(), input, input + frames * 2);
         return 0;
     });
 
@@ -521,5 +498,5 @@ TEST_F(AudioCaptureDeviceTest, ThreadSafetyOfCallbacks) {
     EXPECT_GT(accumulated_data.size(), 0) << "Should have accumulated data";
 }
 
-} // namespace test
-} // namespace ffvoice
+}  // namespace test
+}  // namespace ffvoice

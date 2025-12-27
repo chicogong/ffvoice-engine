@@ -4,22 +4,24 @@
  */
 
 #include "audio/whisper_processor.h"
+
 #include "utils/audio_converter.h"
 #include "utils/logger.h"
 
 #ifdef ENABLE_WHISPER
-#include "whisper.h"
+    #include "whisper.h"
 #endif
 
-#include <cstring>
 #include <algorithm>
+#include <cstring>
 
 namespace ffvoice {
 
 WhisperProcessor::WhisperProcessor(const WhisperConfig& config)
     : config_(config)
 #ifdef ENABLE_WHISPER
-    , ctx_(nullptr)
+      ,
+      ctx_(nullptr)
 #endif
 {
 }
@@ -71,7 +73,7 @@ bool WhisperProcessor::IsInitialized() const {
 }
 
 bool WhisperProcessor::TranscribeFile(const std::string& audio_file,
-                                     std::vector<TranscriptionSegment>& segments) {
+                                      std::vector<TranscriptionSegment>& segments) {
 #ifdef ENABLE_WHISPER
     if (!IsInitialized()) {
         last_error_ = "WhisperProcessor not initialized";
@@ -89,8 +91,8 @@ bool WhisperProcessor::TranscribeFile(const std::string& audio_file,
         return false;
     }
 
-    LOG_INFO("Audio loaded: %zu samples (%.2f seconds)",
-             pcm_data.size(), pcm_data.size() / 16000.0);
+    LOG_INFO("Audio loaded: %zu samples (%.2f seconds)", pcm_data.size(),
+             pcm_data.size() / 16000.0);
 
     // Get default parameters
     auto params = GetDefaultParams();
@@ -118,7 +120,7 @@ bool WhisperProcessor::TranscribeFile(const std::string& audio_file,
 }
 
 bool WhisperProcessor::TranscribeBuffer(const int16_t* samples, size_t num_samples,
-                                       std::vector<TranscriptionSegment>& segments) {
+                                        std::vector<TranscriptionSegment>& segments) {
 #ifdef ENABLE_WHISPER
     if (!IsInitialized()) {
         last_error_ = "WhisperProcessor not initialized";
@@ -193,8 +195,7 @@ struct whisper_full_params WhisperProcessor::GetDefaultParams() {
     return params;
 }
 
-bool WhisperProcessor::LoadAudioFile(const std::string& filename,
-                                    std::vector<float>& pcm_data) {
+bool WhisperProcessor::LoadAudioFile(const std::string& filename, std::vector<float>& pcm_data) {
     // Load and convert audio file to Whisper format (16kHz, float32, mono)
     if (!AudioConverter::LoadAndConvert(filename, pcm_data, 16000)) {
         last_error_ = "Failed to load and convert audio file: " + filename;
@@ -205,7 +206,7 @@ bool WhisperProcessor::LoadAudioFile(const std::string& filename,
 }
 
 bool WhisperProcessor::ConvertBufferToFloat(const int16_t* samples, size_t num_samples,
-                                           std::vector<float>& pcm_data) {
+                                            std::vector<float>& pcm_data) {
     // TODO (Phase 2): This method needs enhancement for real-time mode
     // Currently assumes: 48kHz sample rate, mono channel
     // For Phase 2, we'll need to pass sample_rate and channels as parameters
@@ -218,8 +219,8 @@ bool WhisperProcessor::ConvertBufferToFloat(const int16_t* samples, size_t num_s
     // Resample 48kHz -> 16kHz
     size_t output_size = static_cast<size_t>(num_samples * (16000.0 / 48000.0));
     pcm_data.resize(output_size);
-    AudioConverter::Resample(float_buffer.data(), num_samples, 48000,
-                            pcm_data.data(), output_size, 16000);
+    AudioConverter::Resample(float_buffer.data(), num_samples, 48000, pcm_data.data(), output_size,
+                             16000);
 
     return true;
 }
@@ -258,4 +259,4 @@ void WhisperProcessor::ExtractSegments(std::vector<TranscriptionSegment>& segmen
 
 #endif  // ENABLE_WHISPER
 
-} // namespace ffvoice
+}  // namespace ffvoice

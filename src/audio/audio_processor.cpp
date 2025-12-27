@@ -4,10 +4,11 @@
  */
 
 #include "audio/audio_processor.h"
+
 #include "utils/logger.h"
 
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 namespace ffvoice {
@@ -16,15 +17,13 @@ namespace ffvoice {
 // VolumeNormalizer Implementation
 // ============================================================================
 
-VolumeNormalizer::VolumeNormalizer(float target_level,
-                                   float attack_time,
-                                   float release_time)
-    : target_level_(target_level)
-    , attack_time_(attack_time)
-    , release_time_(release_time)
-    , current_gain_(1.0f)
-    , attack_coeff_(0.0f)
-    , release_coeff_(0.0f) {
+VolumeNormalizer::VolumeNormalizer(float target_level, float attack_time, float release_time)
+    : target_level_(target_level),
+      attack_time_(attack_time),
+      release_time_(release_time),
+      current_gain_(1.0f),
+      attack_coeff_(0.0f),
+      release_coeff_(0.0f) {
 }
 
 bool VolumeNormalizer::Initialize(int sample_rate, int channels) {
@@ -46,7 +45,8 @@ bool VolumeNormalizer::Initialize(int sample_rate, int channels) {
 }
 
 void VolumeNormalizer::Process(int16_t* samples, size_t num_samples) {
-    if (num_samples == 0) return;
+    if (num_samples == 0)
+        return;
 
     constexpr float max_sample = 32767.0f;
     constexpr float min_gain = 0.1f;
@@ -92,9 +92,7 @@ void VolumeNormalizer::Reset() {
 // HighPassFilter Implementation
 // ============================================================================
 
-HighPassFilter::HighPassFilter(float cutoff_freq)
-    : cutoff_freq_(cutoff_freq)
-    , alpha_(0.0f) {
+HighPassFilter::HighPassFilter(float cutoff_freq) : cutoff_freq_(cutoff_freq), alpha_(0.0f) {
 }
 
 bool HighPassFilter::Initialize(int sample_rate, int channels) {
@@ -117,7 +115,8 @@ bool HighPassFilter::Initialize(int sample_rate, int channels) {
 }
 
 void HighPassFilter::Process(int16_t* samples, size_t num_samples) {
-    if (num_samples == 0) return;
+    if (num_samples == 0)
+        return;
 
     constexpr float max_sample = 32767.0f;
 
@@ -174,8 +173,8 @@ bool AudioProcessorChain::Initialize(int sample_rate, int channels) {
         }
     }
 
-    log_info("AudioProcessorChain initialized with " +
-             std::to_string(processors_.size()) + " processors");
+    log_info("AudioProcessorChain initialized with " + std::to_string(processors_.size()) +
+             " processors");
 
     return true;
 }
@@ -193,4 +192,4 @@ void AudioProcessorChain::Reset() {
     }
 }
 
-} // namespace ffvoice
+}  // namespace ffvoice

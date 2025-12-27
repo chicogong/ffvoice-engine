@@ -5,11 +5,11 @@
 
 #pragma once
 
-#include <atomic>
 #include <array>
+#include <atomic>
 
 namespace ffvoice {
 
 // Placeholder - will implement later
 
-} // namespace ffvoice
+}  // namespace ffvoice

@@ -4,17 +4,17 @@
  */
 
 #include "utils/subtitle_generator.h"
+
 #include "utils/logger.h"
 
 #include <fstream>
-#include <sstream>
 #include <iomanip>
+#include <sstream>
 
 namespace ffvoice {
 
 bool SubtitleGenerator::Generate(const std::vector<TranscriptionSegment>& segments,
-                                const std::string& output_file,
-                                Format format) {
+                                 const std::string& output_file, Format format) {
     if (segments.empty()) {
         LOG_WARNING("No segments to generate subtitles from");
         return false;
@@ -47,8 +47,7 @@ bool SubtitleGenerator::Generate(const std::vector<TranscriptionSegment>& segmen
     file << content;
     file.close();
 
-    LOG_INFO("Generated subtitle file: %s (%zu segments)",
-             output_file.c_str(), segments.size());
+    LOG_INFO("Generated subtitle file: %s (%zu segments)", output_file.c_str(), segments.size());
     return true;
 }
 
@@ -60,11 +59,8 @@ std::string SubtitleGenerator::FormatTimeSRT(int64_t ms) {
     int milliseconds = ms % 1000;
 
     std::ostringstream oss;
-    oss << std::setfill('0')
-        << std::setw(2) << hours << ":"
-        << std::setw(2) << minutes << ":"
-        << std::setw(2) << seconds << ","
-        << std::setw(3) << milliseconds;
+    oss << std::setfill('0') << std::setw(2) << hours << ":" << std::setw(2) << minutes << ":"
+        << std::setw(2) << seconds << "," << std::setw(3) << milliseconds;
 
     return oss.str();
 }
@@ -77,16 +73,14 @@ std::string SubtitleGenerator::FormatTimeVTT(int64_t ms) {
     int milliseconds = ms % 1000;
 
     std::ostringstream oss;
-    oss << std::setfill('0')
-        << std::setw(2) << hours << ":"
-        << std::setw(2) << minutes << ":"
-        << std::setw(2) << seconds << "."
-        << std::setw(3) << milliseconds;
+    oss << std::setfill('0') << std::setw(2) << hours << ":" << std::setw(2) << minutes << ":"
+        << std::setw(2) << seconds << "." << std::setw(3) << milliseconds;
 
     return oss.str();
 }
 
-std::string SubtitleGenerator::GeneratePlainText(const std::vector<TranscriptionSegment>& segments) {
+std::string
+SubtitleGenerator::GeneratePlainText(const std::vector<TranscriptionSegment>& segments) {
     std::ostringstream oss;
 
     for (const auto& segment : segments) {
@@ -106,8 +100,7 @@ std::string SubtitleGenerator::GenerateSRT(const std::vector<TranscriptionSegmen
         oss << (i + 1) << "\n";
 
         // Timestamp: start --> end
-        oss << FormatTimeSRT(segment.start_ms) << " --> "
-            << FormatTimeSRT(segment.end_ms) << "\n";
+        oss << FormatTimeSRT(segment.start_ms) << " --> " << FormatTimeSRT(segment.end_ms) << "\n";
 
         // Text content
         oss << segment.text << "\n";
@@ -131,8 +124,7 @@ std::string SubtitleGenerator::GenerateVTT(const std::vector<TranscriptionSegmen
         const auto& segment = segments[i];
 
         // Timestamp: start --> end
-        oss << FormatTimeVTT(segment.start_ms) << " --> "
-            << FormatTimeVTT(segment.end_ms) << "\n";
+        oss << FormatTimeVTT(segment.start_ms) << " --> " << FormatTimeVTT(segment.end_ms) << "\n";
 
         // Text content
         oss << segment.text << "\n";
@@ -146,4 +138,4 @@ std::string SubtitleGenerator::GenerateVTT(const std::vector<TranscriptionSegmen
     return oss.str();
 }
 
-} // namespace ffvoice
+}  // namespace ffvoice

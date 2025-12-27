@@ -4,6 +4,7 @@
  */
 
 #include "signal_generator.h"
+
 #include <cmath>
 #include <random>
 
@@ -12,12 +13,8 @@ namespace ffvoice {
 constexpr double PI = 3.14159265358979323846;
 constexpr int16_t MAX_INT16 = 32767;
 
-std::vector<int16_t> SignalGenerator::GenerateSineWave(
-    double frequency,
-    double duration,
-    int sample_rate,
-    double amplitude) {
-
+std::vector<int16_t> SignalGenerator::GenerateSineWave(double frequency, double duration,
+                                                       int sample_rate, double amplitude) {
     size_t num_samples = static_cast<size_t>(duration * sample_rate);
     std::vector<int16_t> samples(num_samples);
 
@@ -32,19 +29,13 @@ std::vector<int16_t> SignalGenerator::GenerateSineWave(
     return samples;
 }
 
-std::vector<int16_t> SignalGenerator::GenerateSilence(
-    double duration,
-    int sample_rate) {
-
+std::vector<int16_t> SignalGenerator::GenerateSilence(double duration, int sample_rate) {
     size_t num_samples = static_cast<size_t>(duration * sample_rate);
     return std::vector<int16_t>(num_samples, 0);
 }
 
-std::vector<int16_t> SignalGenerator::GenerateWhiteNoise(
-    double duration,
-    int sample_rate,
-    double amplitude) {
-
+std::vector<int16_t> SignalGenerator::GenerateWhiteNoise(double duration, int sample_rate,
+                                                         double amplitude) {
     size_t num_samples = static_cast<size_t>(duration * sample_rate);
     std::vector<int16_t> samples(num_samples);
 
@@ -60,4 +51,4 @@ std::vector<int16_t> SignalGenerator::GenerateWhiteNoise(
     return samples;
 }
 
-} // namespace ffvoice
+}  // namespace ffvoice

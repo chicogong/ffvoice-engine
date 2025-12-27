@@ -11,6 +11,7 @@
 #pragma once
 
 #include "audio/whisper_processor.h"
+
 #include <string>
 #include <vector>
 
@@ -60,8 +61,7 @@ public:
      * @return true if successful, false otherwise
      */
     static bool Generate(const std::vector<TranscriptionSegment>& segments,
-                        const std::string& output_file,
-                        Format format);
+                         const std::string& output_file, Format format);
 
 private:
     /**
@@ -100,4 +100,4 @@ private:
     static std::string GenerateVTT(const std::vector<TranscriptionSegment>& segments);
 };
 
-} // namespace ffvoice
+}  // namespace ffvoice

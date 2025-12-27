@@ -3,13 +3,14 @@
  * @brief Unit tests for WavWriter
  */
 
-#include <gtest/gtest.h>
-#include <fstream>
-#include <vector>
-#include <cstdio>
-
 #include "media/wav_writer.h"
 #include "utils/signal_generator.h"
+
+#include <gtest/gtest.h>
+
+#include <cstdio>
+#include <fstream>
+#include <vector>
 
 using namespace ffvoice;
 
@@ -43,7 +44,8 @@ protected:
 
     bool ReadWavHeader(const std::string& filename, WavHeader& header) {
         std::ifstream file(filename, std::ios::binary);
-        if (!file) return false;
+        if (!file)
+            return false;
         file.read(reinterpret_cast<char*>(&header), sizeof(WavHeader));
         return file.good();
     }

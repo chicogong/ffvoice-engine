@@ -9,4 +9,4 @@ namespace ffvoice {
 
 // Template implementation in header file
 
-} // namespace ffvoice
+}  // namespace ffvoice

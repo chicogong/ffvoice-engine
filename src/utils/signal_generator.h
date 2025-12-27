@@ -5,9 +5,9 @@
 
 #pragma once
 
+#include <cmath>
 #include <cstdint>
 #include <vector>
-#include <cmath>
 
 namespace ffvoice {
 
@@ -24,11 +24,8 @@ public:
      * @param amplitude Amplitude (0.0 to 1.0)
      * @return Vector of PCM samples (int16_t)
      */
-    static std::vector<int16_t> GenerateSineWave(
-        double frequency,
-        double duration,
-        int sample_rate = 48000,
-        double amplitude = 0.5);
+    static std::vector<int16_t> GenerateSineWave(double frequency, double duration,
+                                                 int sample_rate = 48000, double amplitude = 0.5);
 
     /**
      * @brief Generate silence (all zeros)
@@ -36,9 +33,7 @@ public:
      * @param sample_rate Sample rate in Hz
      * @return Vector of zero samples
      */
-    static std::vector<int16_t> GenerateSilence(
-        double duration,
-        int sample_rate = 48000);
+    static std::vector<int16_t> GenerateSilence(double duration, int sample_rate = 48000);
 
     /**
      * @brief Generate white noise
@@ -47,10 +42,8 @@ public:
      * @param amplitude Amplitude (0.0 to 1.0)
      * @return Vector of random samples
      */
-    static std::vector<int16_t> GenerateWhiteNoise(
-        double duration,
-        int sample_rate = 48000,
-        double amplitude = 0.1);
+    static std::vector<int16_t> GenerateWhiteNoise(double duration, int sample_rate = 48000,
+                                                   double amplitude = 0.1);
 };
 
-} // namespace ffvoice
+}  // namespace ffvoice

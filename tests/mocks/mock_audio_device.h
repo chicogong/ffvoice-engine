@@ -10,11 +10,12 @@
 #define FFVOICE_TESTS_MOCKS_MOCK_AUDIO_DEVICE_H
 
 #include <gmock/gmock.h>
-#include <vector>
+
 #include <cstdint>
-#include <string>
-#include <memory>
 #include <functional>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace ffvoice {
 namespace test {
@@ -141,8 +142,8 @@ public:
      * @brief Helper method to set default behavior for successful initialization
      */
     void SetDefaultSuccessBehavior() {
-        using ::testing::Return;
         using ::testing::_;
+        using ::testing::Return;
 
         ON_CALL(*this, Initialize()).WillByDefault(Return(true));
         ON_CALL(*this, Start()).WillByDefault(Return(true));
@@ -223,17 +224,12 @@ public:
 
         ON_CALL(*this, Read(_, _))
             .WillByDefault(Invoke([this](void* buffer, size_t frames) -> size_t {
-                size_t frames_to_copy = std::min(
-                    frames,
-                    (captured_data_.size() - data_index_) / sizeof(int16_t)
-                );
+                size_t frames_to_copy =
+                    std::min(frames, (captured_data_.size() - data_index_) / sizeof(int16_t));
 
                 if (frames_to_copy > 0) {
-                    std::memcpy(
-                        buffer,
-                        &captured_data_[data_index_],
-                        frames_to_copy * sizeof(int16_t)
-                    );
+                    std::memcpy(buffer, &captured_data_[data_index_],
+                                frames_to_copy * sizeof(int16_t));
                     data_index_ += frames_to_copy;
                 }
 
@@ -320,11 +316,7 @@ public:
         ON_CALL(*this, Write(_, _))
             .WillByDefault(Invoke([this](const void* buffer, size_t frames) -> size_t {
                 const int16_t* samples = static_cast<const int16_t*>(buffer);
-                played_data_.insert(
-                    played_data_.end(),
-                    samples,
-                    samples + frames
-                );
+                played_data_.insert(played_data_.end(), samples, samples + frames);
                 return frames;
             }));
     }
@@ -348,10 +340,8 @@ public:
      * @param output_devices List of output devices
      * @return True if enumeration successful
      */
-    virtual bool EnumerateDevices(
-        std::vector<AudioDeviceInfo>& input_devices,
-        std::vector<AudioDeviceInfo>& output_devices
-    ) = 0;
+    virtual bool EnumerateDevices(std::vector<AudioDeviceInfo>& input_devices,
+                                  std::vector<AudioDeviceInfo>& output_devices) = 0;
 
     /**
      * @brief Get default input device
@@ -373,9 +363,8 @@ public:
      * @param device_id Device ID
      * @return Shared pointer to capture device
      */
-    virtual std::shared_ptr<IAudioCaptureDevice> CreateCaptureDevice(
-        const std::string& device_id
-    ) = 0;
+    virtual std::shared_ptr<IAudioCaptureDevice>
+    CreateCaptureDevice(const std::string& device_id) = 0;
 
     /**
      * @brief Create playback device by ID
@@ -383,9 +372,8 @@ public:
      * @param device_id Device ID
      * @return Shared pointer to playback device
      */
-    virtual std::shared_ptr<IAudioPlaybackDevice> CreatePlaybackDevice(
-        const std::string& device_id
-    ) = 0;
+    virtual std::shared_ptr<IAudioPlaybackDevice>
+    CreatePlaybackDevice(const std::string& device_id) = 0;
 };
 
 /**
@@ -394,34 +382,23 @@ public:
  */
 class MockAudioDeviceManager : public IAudioDeviceManager {
 public:
-    MOCK_METHOD(
-        bool,
-        EnumerateDevices,
-        (std::vector<AudioDeviceInfo>& input_devices,
-         std::vector<AudioDeviceInfo>& output_devices),
-        (override)
-    );
+    MOCK_METHOD(bool, EnumerateDevices,
+                (std::vector<AudioDeviceInfo> & input_devices,
+                 std::vector<AudioDeviceInfo>& output_devices),
+                (override));
     MOCK_METHOD(AudioDeviceInfo, GetDefaultInputDevice, (), (const, override));
     MOCK_METHOD(AudioDeviceInfo, GetDefaultOutputDevice, (), (const, override));
-    MOCK_METHOD(
-        std::shared_ptr<IAudioCaptureDevice>,
-        CreateCaptureDevice,
-        (const std::string& device_id),
-        (override)
-    );
-    MOCK_METHOD(
-        std::shared_ptr<IAudioPlaybackDevice>,
-        CreatePlaybackDevice,
-        (const std::string& device_id),
-        (override)
-    );
+    MOCK_METHOD(std::shared_ptr<IAudioCaptureDevice>, CreateCaptureDevice,
+                (const std::string& device_id), (override));
+    MOCK_METHOD(std::shared_ptr<IAudioPlaybackDevice>, CreatePlaybackDevice,
+                (const std::string& device_id), (override));
 
     /**
      * @brief Set up default mock devices for testing
      */
     void SetupDefaultDevices() {
-        using ::testing::Return;
         using ::testing::_;
+        using ::testing::Return;
 
         AudioDeviceInfo default_input;
         default_input.id = "default_input";
@@ -444,7 +421,7 @@ public:
     }
 };
 
-} // namespace test
-} // namespace ffvoice
+}  // namespace test
+}  // namespace ffvoice
 
-#endif // FFVOICE_TESTS_MOCKS_MOCK_AUDIO_DEVICE_H
+#endif  // FFVOICE_TESTS_MOCKS_MOCK_AUDIO_DEVICE_H

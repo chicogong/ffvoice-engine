@@ -6,9 +6,9 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace ffvoice {
 
@@ -66,14 +66,15 @@ public:
      * @param attack_time Attack time in seconds (default 0.1)
      * @param release_time Release time in seconds (default 0.3)
      */
-    VolumeNormalizer(float target_level = 0.3f,
-                     float attack_time = 0.1f,
+    VolumeNormalizer(float target_level = 0.3f, float attack_time = 0.1f,
                      float release_time = 0.3f);
 
     bool Initialize(int sample_rate, int channels) override;
     void Process(int16_t* samples, size_t num_samples) override;
     void Reset() override;
-    std::string GetName() const override { return "VolumeNormalizer"; }
+    std::string GetName() const override {
+        return "VolumeNormalizer";
+    }
 
 private:
     float target_level_;
@@ -101,11 +102,13 @@ public:
     bool Initialize(int sample_rate, int channels) override;
     void Process(int16_t* samples, size_t num_samples) override;
     void Reset() override;
-    std::string GetName() const override { return "HighPassFilter"; }
+    std::string GetName() const override {
+        return "HighPassFilter";
+    }
 
 private:
     float cutoff_freq_;
-    float alpha_;  // Filter coefficient
+    float alpha_;                     // Filter coefficient
     std::vector<float> prev_input_;   // Previous input per channel
     std::vector<float> prev_output_;  // Previous output per channel
 };
@@ -127,15 +130,19 @@ public:
     bool Initialize(int sample_rate, int channels) override;
     void Process(int16_t* samples, size_t num_samples) override;
     void Reset() override;
-    std::string GetName() const override { return "AudioProcessorChain"; }
+    std::string GetName() const override {
+        return "AudioProcessorChain";
+    }
 
     /**
      * @brief Get number of processors in chain
      */
-    size_t GetProcessorCount() const { return processors_.size(); }
+    size_t GetProcessorCount() const {
+        return processors_.size();
+    }
 
 private:
     std::vector<std::unique_ptr<AudioProcessor>> processors_;
 };
 
-} // namespace ffvoice
+}  // namespace ffvoice

@@ -7,16 +7,16 @@
 
 #pragma once
 
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
-#include <cstdint>
 
 #ifdef ENABLE_WHISPER
 extern "C" {
-    // Forward declarations for whisper.cpp C API
-    struct whisper_context;
-    struct whisper_full_params;
+// Forward declarations for whisper.cpp C API
+struct whisper_context;
+struct whisper_full_params;
 }
 #endif
 
@@ -26,16 +26,17 @@ namespace ffvoice {
  * @brief Transcription segment with timestamp and text
  */
 struct TranscriptionSegment {
-    int64_t start_ms;   ///< Start time in milliseconds
-    int64_t end_ms;     ///< End time in milliseconds
-    std::string text;   ///< Transcribed text content
-    float confidence;   ///< Confidence score (0.0-1.0)
+    int64_t start_ms;  ///< Start time in milliseconds
+    int64_t end_ms;    ///< End time in milliseconds
+    std::string text;  ///< Transcribed text content
+    float confidence;  ///< Confidence score (0.0-1.0)
 
-    TranscriptionSegment()
-        : start_ms(0), end_ms(0), confidence(0.0f) {}
+    TranscriptionSegment() : start_ms(0), end_ms(0), confidence(0.0f) {
+    }
 
     TranscriptionSegment(int64_t start, int64_t end, const std::string& txt, float conf = 0.0f)
-        : start_ms(start), end_ms(end), text(txt), confidence(conf) {}
+        : start_ms(start), end_ms(end), text(txt), confidence(conf) {
+    }
 };
 
 /**
@@ -106,8 +107,7 @@ public:
      * @param segments Output vector of transcription segments
      * @return true if successful, false otherwise
      */
-    bool TranscribeFile(const std::string& audio_file,
-                       std::vector<TranscriptionSegment>& segments);
+    bool TranscribeFile(const std::string& audio_file, std::vector<TranscriptionSegment>& segments);
 
     /**
      * @brief Transcribe audio buffer (for real-time mode - Phase 2)
@@ -117,7 +117,7 @@ public:
      * @return true if successful, false otherwise
      */
     bool TranscribeBuffer(const int16_t* samples, size_t num_samples,
-                         std::vector<TranscriptionSegment>& segments);
+                          std::vector<TranscriptionSegment>& segments);
 
     /**
      * @brief Check if processor is initialized
@@ -129,7 +129,9 @@ public:
      * @brief Get the last error message
      * @return Error message string
      */
-    std::string GetLastError() const { return last_error_; }
+    std::string GetLastError() const {
+        return last_error_;
+    }
 
 private:
     WhisperConfig config_;
@@ -150,8 +152,7 @@ private:
      * @param pcm_data Output PCM data (16kHz, float32, mono)
      * @return true if successful, false otherwise
      */
-    bool LoadAudioFile(const std::string& filename,
-                      std::vector<float>& pcm_data);
+    bool LoadAudioFile(const std::string& filename, std::vector<float>& pcm_data);
 
     /**
      * @brief Convert audio buffer to whisper format
@@ -161,7 +162,7 @@ private:
      * @return true if successful, false otherwise
      */
     bool ConvertBufferToFloat(const int16_t* samples, size_t num_samples,
-                             std::vector<float>& pcm_data);
+                              std::vector<float>& pcm_data);
 
     /**
      * @brief Extract transcription results from whisper context
@@ -171,4 +172,4 @@ private:
 #endif
 };
 
-} // namespace ffvoice
+}  // namespace ffvoice

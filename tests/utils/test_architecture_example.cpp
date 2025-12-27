@@ -7,18 +7,19 @@
  * and helpers.
  */
 
-#include <gtest/gtest.h>
+#include "utils/test_helpers.h"
+#include "utils/test_signal_generator.h"
+
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "fixtures/audio_test_fixture.h"
 #include "mocks/mock_audio_device.h"
 #include "mocks/mock_file_system.h"
-#include "utils/test_signal_generator.h"
-#include "utils/test_helpers.h"
 
 using namespace ffvoice::test;
-using ::testing::Return;
 using ::testing::_;
+using ::testing::Return;
 
 // ============================================================================
 // Example 1: Using Test Signal Generator
@@ -89,8 +90,7 @@ TEST_F(SignalGeneratorExample, MixMultipleSignals) {
     EXPECT_EQ(mixed.size(), tone1.size());
 
     // Mixed signal should have higher complexity
-    EXPECT_GT(TestHelpers::CalculateEnergy(mixed),
-              TestHelpers::CalculateEnergy(tone1));
+    EXPECT_GT(TestHelpers::CalculateEnergy(mixed), TestHelpers::CalculateEnergy(tone1));
 }
 
 // ============================================================================
@@ -130,9 +130,9 @@ TEST_F(TestHelpersExample, AnalyzeSignalQuality) {
     double rms_deg = TestHelpers::CalculateRMS(degraded);
 
     // Verify quality metrics
-    EXPECT_LT(mse, 1000.0);  // Low error
+    EXPECT_LT(mse, 1000.0);        // Low error
     EXPECT_GT(correlation, 0.99);  // High correlation
-    EXPECT_LT(rms_deg, rms_ref);  // Reduced amplitude
+    EXPECT_LT(rms_deg, rms_ref);   // Reduced amplitude
 }
 
 TEST_F(TestHelpersExample, ConvertDecibels) {
@@ -312,10 +312,9 @@ protected:
 TEST_F(MockFileSystemExample, CreateAndReadVirtualFile) {
     // Create virtual file with audio data
     auto audio_data = generator_->GenerateSineWave(440.0, 100);
-    std::vector<uint8_t> file_data(
-        reinterpret_cast<uint8_t*>(audio_data.data()),
-        reinterpret_cast<uint8_t*>(audio_data.data()) + audio_data.size() * sizeof(int16_t)
-    );
+    std::vector<uint8_t> file_data(reinterpret_cast<uint8_t*>(audio_data.data()),
+                                   reinterpret_cast<uint8_t*>(audio_data.data()) +
+                                       audio_data.size() * sizeof(int16_t));
 
     mock_fs_->AddVirtualFile("/test/audio.raw", file_data);
 

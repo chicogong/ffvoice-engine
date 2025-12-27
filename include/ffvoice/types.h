@@ -15,38 +15,33 @@ namespace ffvoice {
  * Audio format types
  */
 enum class AudioFormat {
-    FLOAT32,    ///< 32-bit floating point
-    INT16,      ///< 16-bit signed integer
-    INT24,      ///< 24-bit signed integer
-    INT32       ///< 32-bit signed integer
+    FLOAT32,  ///< 32-bit floating point
+    INT16,    ///< 16-bit signed integer
+    INT24,    ///< 24-bit signed integer
+    INT32     ///< 32-bit signed integer
 };
 
 /**
  * Audio file formats
  */
 enum class AudioFileFormat {
-    WAV,        ///< WAV (PCM)
-    FLAC        ///< FLAC (lossless compression)
+    WAV,  ///< WAV (PCM)
+    FLAC  ///< FLAC (lossless compression)
 };
 
 /**
  * Log levels
  */
-enum class LogLevel {
-    ERROR = 0,
-    WARNING = 1,
-    INFO = 2,
-    DEBUG = 3
-};
+enum class LogLevel { ERROR = 0, WARNING = 1, INFO = 2, DEBUG = 3 };
 
 /**
  * Audio stream configuration
  */
 struct AudioStreamConfig {
-    int device_id = 0;              ///< Audio device ID
-    int sample_rate = 48000;        ///< Sample rate in Hz
-    int channels = 1;               ///< Number of channels (1=mono, 2=stereo)
-    int buffer_frames = 256;        ///< Buffer size in frames
+    int device_id = 0;        ///< Audio device ID
+    int sample_rate = 48000;  ///< Sample rate in Hz
+    int channels = 1;         ///< Number of channels (1=mono, 2=stereo)
+    int buffer_frames = 256;  ///< Buffer size in frames
     AudioFormat format = AudioFormat::FLOAT32;
 };
 
@@ -57,8 +52,8 @@ struct AudioFileConfig {
     AudioFileFormat format = AudioFileFormat::WAV;
     int sample_rate = 48000;
     int channels = 1;
-    int bit_depth = 16;             ///< Bit depth for PCM (16 or 24)
-    int flac_compression_level = 5; ///< FLAC compression (0-8)
+    int bit_depth = 16;              ///< Bit depth for PCM (16 or 24)
+    int flac_compression_level = 5;  ///< FLAC compression (0-8)
     std::string output_path;
 };
 
@@ -74,4 +69,4 @@ struct AudioDeviceInfo {
     bool is_default;
 };
 
-} // namespace ffvoice
+}  // namespace ffvoice

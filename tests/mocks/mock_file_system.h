@@ -10,11 +10,12 @@
 #define FFVOICE_TESTS_MOCKS_MOCK_FILE_SYSTEM_H
 
 #include <gmock/gmock.h>
+
+#include <cstdint>
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
-#include <cstdint>
-#include <memory>
-#include <map>
 
 namespace ffvoice {
 namespace test {
@@ -116,8 +117,8 @@ public:
         file_position_ = 0;
 
         using ::testing::_;
-        using ::testing::Return;
         using ::testing::Invoke;
+        using ::testing::Return;
 
         ON_CALL(*this, Open(_)).WillByDefault(Return(true));
         ON_CALL(*this, IsOpen()).WillByDefault(Return(true));
@@ -125,53 +126,44 @@ public:
 
         ON_CALL(*this, Read(_, _))
             .WillByDefault(Invoke([this](void* buffer, size_t size) -> size_t {
-                size_t bytes_to_read = std::min(
-                    size,
-                    simulated_content_.size() - file_position_
-                );
+                size_t bytes_to_read = std::min(size, simulated_content_.size() - file_position_);
 
                 if (bytes_to_read > 0) {
-                    std::memcpy(
-                        buffer,
-                        &simulated_content_[file_position_],
-                        bytes_to_read
-                    );
+                    std::memcpy(buffer, &simulated_content_[file_position_], bytes_to_read);
                     file_position_ += bytes_to_read;
                 }
 
                 return bytes_to_read;
             }));
 
-        ON_CALL(*this, Seek(_, _))
-            .WillByDefault(Invoke([this](int64_t offset, int origin) -> bool {
-                int64_t new_pos = 0;
+        ON_CALL(*this, Seek(_, _)).WillByDefault(Invoke([this](int64_t offset, int origin) -> bool {
+            int64_t new_pos = 0;
 
-                switch (origin) {
-                    case SEEK_SET:
-                        new_pos = offset;
-                        break;
-                    case SEEK_CUR:
-                        new_pos = file_position_ + offset;
-                        break;
-                    case SEEK_END:
-                        new_pos = simulated_content_.size() + offset;
-                        break;
-                    default:
-                        return false;
-                }
-
-                if (new_pos < 0 || new_pos > static_cast<int64_t>(simulated_content_.size())) {
+            switch (origin) {
+                case SEEK_SET:
+                    new_pos = offset;
+                    break;
+                case SEEK_CUR:
+                    new_pos = file_position_ + offset;
+                    break;
+                case SEEK_END:
+                    new_pos = simulated_content_.size() + offset;
+                    break;
+                default:
                     return false;
-                }
+            }
 
-                file_position_ = static_cast<size_t>(new_pos);
-                return true;
-            }));
+            if (new_pos < 0 || new_pos > static_cast<int64_t>(simulated_content_.size())) {
+                return false;
+            }
 
-        ON_CALL(*this, Tell())
-            .WillByDefault(Invoke([this]() -> int64_t {
-                return static_cast<int64_t>(file_position_);
-            }));
+            file_position_ = static_cast<size_t>(new_pos);
+            return true;
+        }));
+
+        ON_CALL(*this, Tell()).WillByDefault(Invoke([this]() -> int64_t {
+            return static_cast<int64_t>(file_position_);
+        }));
     }
 
 private:
@@ -258,8 +250,8 @@ public:
      */
     void CaptureWrittenData() {
         using ::testing::_;
-        using ::testing::Return;
         using ::testing::Invoke;
+        using ::testing::Return;
 
         ON_CALL(*this, Open(_, _)).WillByDefault(Return(true));
         ON_CALL(*this, IsOpen()).WillByDefault(Return(true));
@@ -341,10 +333,8 @@ public:
      * @param pattern File pattern filter (e.g., "*.wav")
      * @return Vector of file paths
      */
-    virtual std::vector<std::string> ListFiles(
-        const std::string& path,
-        const std::string& pattern = "*"
-    ) const = 0;
+    virtual std::vector<std::string> ListFiles(const std::string& path,
+                                               const std::string& pattern = "*") const = 0;
 
     /**
      * @brief Create file reader
@@ -373,12 +363,8 @@ public:
     MOCK_METHOD(bool, CreateDirectory, (const std::string& path), (override));
     MOCK_METHOD(bool, DeleteFile, (const std::string& path), (override));
     MOCK_METHOD(bool, DeleteDirectory, (const std::string& path, bool recursive), (override));
-    MOCK_METHOD(
-        std::vector<std::string>,
-        ListFiles,
-        (const std::string& path, const std::string& pattern),
-        (const, override)
-    );
+    MOCK_METHOD(std::vector<std::string>, ListFiles,
+                (const std::string& path, const std::string& pattern), (const, override));
     MOCK_METHOD(std::unique_ptr<IFileReader>, CreateReader, (), (override));
     MOCK_METHOD(std::unique_ptr<IFileWriter>, CreateWriter, (), (override));
 
@@ -387,13 +373,12 @@ public:
      */
     void SetupVirtualFileSystem() {
         using ::testing::_;
-        using ::testing::Return;
         using ::testing::Invoke;
+        using ::testing::Return;
 
-        ON_CALL(*this, FileExists(_))
-            .WillByDefault(Invoke([this](const std::string& path) -> bool {
-                return virtual_files_.find(path) != virtual_files_.end();
-            }));
+        ON_CALL(*this, FileExists(_)).WillByDefault(Invoke([this](const std::string& path) -> bool {
+            return virtual_files_.find(path) != virtual_files_.end();
+        }));
 
         ON_CALL(*this, DirectoryExists(_))
             .WillByDefault(Invoke([this](const std::string& path) -> bool {
@@ -406,10 +391,9 @@ public:
                 return true;
             }));
 
-        ON_CALL(*this, DeleteFile(_))
-            .WillByDefault(Invoke([this](const std::string& path) -> bool {
-                return virtual_files_.erase(path) > 0;
-            }));
+        ON_CALL(*this, DeleteFile(_)).WillByDefault(Invoke([this](const std::string& path) -> bool {
+            return virtual_files_.erase(path) > 0;
+        }));
     }
 
     /**
@@ -447,7 +431,7 @@ private:
     std::set<std::string> virtual_directories_;
 };
 
-} // namespace test
-} // namespace ffvoice
+}  // namespace test
+}  // namespace ffvoice
 
-#endif // FFVOICE_TESTS_MOCKS_MOCK_FILE_SYSTEM_H
+#endif  // FFVOICE_TESTS_MOCKS_MOCK_FILE_SYSTEM_H

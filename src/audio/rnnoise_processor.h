@@ -6,8 +6,9 @@
 #pragma once
 
 #include "audio/audio_processor.h"
-#include <vector>
+
 #include <memory>
+#include <vector>
 
 #ifdef ENABLE_RNNOISE
 extern "C" {
@@ -21,7 +22,7 @@ namespace ffvoice {
  * @brief RNNoise configuration
  */
 struct RNNoiseConfig {
-    bool enable_vad = false;    ///< Voice activity detection (experimental)
+    bool enable_vad = false;  ///< Voice activity detection (experimental)
 };
 
 /**
@@ -71,7 +72,9 @@ public:
     /**
      * @brief Get processor name
      */
-    std::string GetName() const override { return "RNNoiseProcessor"; }
+    std::string GetName() const override {
+        return "RNNoiseProcessor";
+    }
 
 private:
     /**
@@ -81,7 +84,7 @@ private:
      */
     void ProcessFrame(float* frame, size_t frame_size);
 
-    RNNoiseConfig config_;             ///< Configuration
+    RNNoiseConfig config_;  ///< Configuration
 
 #ifdef ENABLE_RNNOISE
     // RNNoise states (one per channel)
@@ -93,9 +96,9 @@ private:
     std::vector<int16_t> int16_buffer_;
 
     // Frame rebuffering (256 -> 480)
-    std::vector<float> rebuffer_;      ///< Accumulation buffer
-    size_t rebuffer_pos_ = 0;          ///< Current position in rebuffer
-    size_t frame_size_ = 0;            ///< 480 samples @48kHz (10ms)
+    std::vector<float> rebuffer_;  ///< Accumulation buffer
+    size_t rebuffer_pos_ = 0;      ///< Current position in rebuffer
+    size_t frame_size_ = 0;        ///< 480 samples @48kHz (10ms)
 };
 
-} // namespace ffvoice
+}  // namespace ffvoice

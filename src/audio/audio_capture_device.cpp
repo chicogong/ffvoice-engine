@@ -4,7 +4,9 @@
  */
 
 #include "audio/audio_capture_device.h"
+
 #include "utils/logger.h"
+
 #include <iostream>
 
 namespace ffvoice {
@@ -90,10 +92,7 @@ int AudioCaptureDevice::GetDefaultInputDevice() {
     return Pa_GetDefaultInputDevice();
 }
 
-bool AudioCaptureDevice::Open(int device_id,
-                               int sample_rate,
-                               int channels,
-                               int frames_per_buffer) {
+bool AudioCaptureDevice::Open(int device_id, int sample_rate, int channels, int frames_per_buffer) {
     if (stream_) {
         log_error("Device already open");
         return false;
@@ -124,16 +123,12 @@ bool AudioCaptureDevice::Open(int device_id,
     input_params.hostApiSpecificStreamInfo = nullptr;
 
     // Open stream
-    PaError err = Pa_OpenStream(
-        &stream_,
-        &input_params,
-        nullptr,  // No output
-        sample_rate,
-        frames_per_buffer,
-        paClipOff,  // Don't clip samples
-        nullptr,    // No callback yet (will set on Start)
-        nullptr
-    );
+    PaError err = Pa_OpenStream(&stream_, &input_params,
+                                nullptr,  // No output
+                                sample_rate, frames_per_buffer,
+                                paClipOff,  // Don't clip samples
+                                nullptr,    // No callback yet (will set on Start)
+                                nullptr);
 
     if (err != paNoError) {
         log_error("Failed to open stream: " + std::string(Pa_GetErrorText(err)));
@@ -145,14 +140,10 @@ bool AudioCaptureDevice::Open(int device_id,
     return true;
 }
 
-int AudioCaptureDevice::PortAudioCallback(
-    const void* input_buffer,
-    void* output_buffer,
-    unsigned long frames_per_buffer,
-    const PaStreamCallbackTimeInfo* time_info,
-    PaStreamCallbackFlags status_flags,
-    void* user_data) {
-
+int AudioCaptureDevice::PortAudioCallback(const void* input_buffer, void* output_buffer,
+                                          unsigned long frames_per_buffer,
+                                          const PaStreamCallbackTimeInfo* time_info,
+                                          PaStreamCallbackFlags status_flags, void* user_data) {
     (void)output_buffer;  // Unused
     (void)time_info;      // Unused
 
@@ -200,15 +191,10 @@ bool AudioCaptureDevice::Start(AudioCallback callback) {
     input_params.suggestedLatency = Pa_GetDeviceInfo(device_id_)->defaultLowInputLatency;
     input_params.hostApiSpecificStreamInfo = nullptr;
 
-    PaError err = Pa_OpenStream(
-        &stream_,
-        &input_params,
-        nullptr,
-        sample_rate_,
-        256,  // frames per buffer
-        paClipOff,
-        PortAudioCallback,
-        this  // User data
+    PaError err = Pa_OpenStream(&stream_, &input_params, nullptr, sample_rate_,
+                                256,  // frames per buffer
+                                paClipOff, PortAudioCallback,
+                                this  // User data
     );
 
     if (err != paNoError) {
@@ -253,4 +239,4 @@ void AudioCaptureDevice::Close() {
     }
 }
 
-} // namespace ffvoice
+}  // namespace ffvoice

@@ -4,12 +4,13 @@
  */
 
 #include "utils/audio_converter.h"
+
 #include "utils/logger.h"
 
-#include <fstream>
-#include <cstring>
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <fstream>
 
 // FLAC decoder
 #include <FLAC/stream_decoder.h>
@@ -20,9 +21,8 @@ namespace ffvoice {
 // Public Methods
 // ============================================================================
 
-bool AudioConverter::LoadAndConvert(const std::string& filename,
-                                   std::vector<float>& pcm_data,
-                                   int target_sample_rate) {
+bool AudioConverter::LoadAndConvert(const std::string& filename, std::vector<float>& pcm_data,
+                                    int target_sample_rate) {
     // Determine file type by extension
     std::string ext;
     size_t dot_pos = filename.find_last_of('.');
@@ -52,8 +52,8 @@ bool AudioConverter::LoadAndConvert(const std::string& filename,
         return false;
     }
 
-    LOG_INFO("Loaded audio: %d Hz, %d channels, %zu samples",
-             sample_rate, channels, raw_pcm.size());
+    LOG_INFO("Loaded audio: %d Hz, %d channels, %zu samples", sample_rate, channels,
+             raw_pcm.size());
 
     // Convert stereo to mono if needed
     std::vector<float> mono_pcm;
@@ -72,13 +72,12 @@ bool AudioConverter::LoadAndConvert(const std::string& filename,
     // Resample if needed
     if (sample_rate != target_sample_rate) {
         size_t output_size = static_cast<size_t>(
-            mono_pcm.size() * static_cast<double>(target_sample_rate) / sample_rate
-        );
+            mono_pcm.size() * static_cast<double>(target_sample_rate) / sample_rate);
         pcm_data.resize(output_size);
-        Resample(mono_pcm.data(), mono_pcm.size(), sample_rate,
-                pcm_data.data(), pcm_data.size(), target_sample_rate);
-        LOG_INFO("Resampled: %d Hz → %d Hz (%zu samples)",
-                 sample_rate, target_sample_rate, pcm_data.size());
+        Resample(mono_pcm.data(), mono_pcm.size(), sample_rate, pcm_data.data(), pcm_data.size(),
+                 target_sample_rate);
+        LOG_INFO("Resampled: %d Hz → %d Hz (%zu samples)", sample_rate, target_sample_rate,
+                 pcm_data.size());
     } else {
         pcm_data = std::move(mono_pcm);
     }
@@ -99,8 +98,8 @@ void AudioConverter::FloatToInt16(const float* input, size_t num_samples, int16_
     }
 }
 
-void AudioConverter::Resample(const float* input, size_t input_size, int input_rate,
-                             float* output, size_t output_size, int output_rate) {
+void AudioConverter::Resample(const float* input, size_t input_size, int input_rate, float* output,
+                              size_t output_size, int output_rate) {
     if (input_size == 0 || output_size == 0) {
         return;
     }
@@ -137,29 +136,28 @@ void AudioConverter::StereoToMono(const float* stereo, size_t num_frames, float*
 // WAV file format structures
 #pragma pack(push, 1)
 struct WavHeader {
-    char riff[4];           // "RIFF"
-    uint32_t file_size;     // File size - 8
-    char wave[4];           // "WAVE"
+    char riff[4];        // "RIFF"
+    uint32_t file_size;  // File size - 8
+    char wave[4];        // "WAVE"
 };
 
 struct WavChunkHeader {
-    char id[4];             // Chunk ID
-    uint32_t size;          // Chunk size
+    char id[4];     // Chunk ID
+    uint32_t size;  // Chunk size
 };
 
 struct WavFormatChunk {
-    uint16_t format;        // Audio format (1 = PCM)
-    uint16_t channels;      // Number of channels
-    uint32_t sample_rate;   // Sample rate
-    uint32_t byte_rate;     // Byte rate
-    uint16_t block_align;   // Block align
-    uint16_t bits_per_sample; // Bits per sample
+    uint16_t format;           // Audio format (1 = PCM)
+    uint16_t channels;         // Number of channels
+    uint32_t sample_rate;      // Sample rate
+    uint32_t byte_rate;        // Byte rate
+    uint16_t block_align;      // Block align
+    uint16_t bits_per_sample;  // Bits per sample
 };
 #pragma pack(pop)
 
-bool AudioConverter::LoadWAV(const std::string& filename,
-                            std::vector<float>& pcm_data,
-                            int& sample_rate, int& channels) {
+bool AudioConverter::LoadWAV(const std::string& filename, std::vector<float>& pcm_data,
+                             int& sample_rate, int& channels) {
     std::ifstream file(filename, std::ios::binary);
     if (!file.is_open()) {
         LOG_ERROR("Failed to open WAV file: %s", filename.c_str());
@@ -170,8 +168,7 @@ bool AudioConverter::LoadWAV(const std::string& filename,
     WavHeader header;
     file.read(reinterpret_cast<char*>(&header), sizeof(header));
 
-    if (std::memcmp(header.riff, "RIFF", 4) != 0 ||
-        std::memcmp(header.wave, "WAVE", 4) != 0) {
+    if (std::memcmp(header.riff, "RIFF", 4) != 0 || std::memcmp(header.wave, "WAVE", 4) != 0) {
         LOG_ERROR("Invalid WAV file format");
         return false;
     }
@@ -184,7 +181,8 @@ bool AudioConverter::LoadWAV(const std::string& filename,
         WavChunkHeader chunk;
         file.read(reinterpret_cast<char*>(&chunk), sizeof(chunk));
 
-        if (!file.good()) break;
+        if (!file.good())
+            break;
 
         if (std::memcmp(chunk.id, "fmt ", 4) == 0) {
             file.read(reinterpret_cast<char*>(&fmt), sizeof(fmt));
@@ -242,12 +240,10 @@ struct FLACDecoderData {
 };
 
 // FLAC write callback
-static FLAC__StreamDecoderWriteStatus flac_write_callback(
-    const FLAC__StreamDecoder* /*decoder*/,
-    const FLAC__Frame* frame,
-    const FLAC__int32* const buffer[],
-    void* client_data) {
-
+static FLAC__StreamDecoderWriteStatus flac_write_callback(const FLAC__StreamDecoder* /*decoder*/,
+                                                          const FLAC__Frame* frame,
+                                                          const FLAC__int32* const buffer[],
+                                                          void* client_data) {
     FLACDecoderData* data = static_cast<FLACDecoderData*>(client_data);
 
     // Get number of samples in this frame
@@ -271,11 +267,8 @@ static FLAC__StreamDecoderWriteStatus flac_write_callback(
 }
 
 // FLAC metadata callback
-static void flac_metadata_callback(
-    const FLAC__StreamDecoder* /*decoder*/,
-    const FLAC__StreamMetadata* metadata,
-    void* client_data) {
-
+static void flac_metadata_callback(const FLAC__StreamDecoder* /*decoder*/,
+                                   const FLAC__StreamMetadata* metadata, void* client_data) {
     FLACDecoderData* data = static_cast<FLACDecoderData*>(client_data);
 
     if (metadata->type == FLAC__METADATA_TYPE_STREAMINFO) {
@@ -283,24 +276,19 @@ static void flac_metadata_callback(
         data->channels = metadata->data.stream_info.channels;
         data->bits_per_sample = metadata->data.stream_info.bits_per_sample;
 
-        LOG_INFO("FLAC metadata: %d Hz, %d channels, %d bits",
-                 data->sample_rate, data->channels, data->bits_per_sample);
+        LOG_INFO("FLAC metadata: %d Hz, %d channels, %d bits", data->sample_rate, data->channels,
+                 data->bits_per_sample);
     }
 }
 
 // FLAC error callback
-static void flac_error_callback(
-    const FLAC__StreamDecoder* /*decoder*/,
-    FLAC__StreamDecoderErrorStatus status,
-    void* /*client_data*/) {
-
-    LOG_ERROR("FLAC decoder error: %s",
-              FLAC__StreamDecoderErrorStatusString[status]);
+static void flac_error_callback(const FLAC__StreamDecoder* /*decoder*/,
+                                FLAC__StreamDecoderErrorStatus status, void* /*client_data*/) {
+    LOG_ERROR("FLAC decoder error: %s", FLAC__StreamDecoderErrorStatusString[status]);
 }
 
-bool AudioConverter::LoadFLAC(const std::string& filename,
-                             std::vector<float>& pcm_data,
-                             int& sample_rate, int& channels) {
+bool AudioConverter::LoadFLAC(const std::string& filename, std::vector<float>& pcm_data,
+                              int& sample_rate, int& channels) {
     // Create FLAC decoder
     FLAC__StreamDecoder* decoder = FLAC__stream_decoder_new();
     if (!decoder) {
@@ -316,14 +304,9 @@ bool AudioConverter::LoadFLAC(const std::string& filename,
     data.bits_per_sample = 0;
 
     // Initialize decoder
-    FLAC__StreamDecoderInitStatus init_status = FLAC__stream_decoder_init_file(
-        decoder,
-        filename.c_str(),
-        flac_write_callback,
-        flac_metadata_callback,
-        flac_error_callback,
-        &data
-    );
+    FLAC__StreamDecoderInitStatus init_status =
+        FLAC__stream_decoder_init_file(decoder, filename.c_str(), flac_write_callback,
+                                       flac_metadata_callback, flac_error_callback, &data);
 
     if (init_status != FLAC__STREAM_DECODER_INIT_STATUS_OK) {
         LOG_ERROR("Failed to initialize FLAC decoder: %s",
@@ -351,4 +334,4 @@ bool AudioConverter::LoadFLAC(const std::string& filename,
     return true;
 }
 
-} // namespace ffvoice
+}  // namespace ffvoice

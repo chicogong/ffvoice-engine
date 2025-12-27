@@ -6,10 +6,11 @@
 #pragma once
 
 #include <portaudio.h>
+
 #include <functional>
-#include <vector>
-#include <string>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "ffvoice/types.h"
 
@@ -65,9 +66,7 @@ public:
      * @param frames_per_buffer Buffer size in frames
      * @return true if successful
      */
-    bool Open(int device_id = -1,
-              int sample_rate = 48000,
-              int channels = 1,
+    bool Open(int device_id = -1, int sample_rate = 48000, int channels = 1,
               int frames_per_buffer = 256);
 
     /**
@@ -90,32 +89,37 @@ public:
     /**
      * @brief Check if device is open
      */
-    bool IsOpen() const { return stream_ != nullptr; }
+    bool IsOpen() const {
+        return stream_ != nullptr;
+    }
 
     /**
      * @brief Check if capturing
      */
-    bool IsCapturing() const { return is_capturing_; }
+    bool IsCapturing() const {
+        return is_capturing_;
+    }
 
     /**
      * @brief Get current sample rate
      */
-    int GetSampleRate() const { return sample_rate_; }
+    int GetSampleRate() const {
+        return sample_rate_;
+    }
 
     /**
      * @brief Get current channel count
      */
-    int GetChannels() const { return channels_; }
+    int GetChannels() const {
+        return channels_;
+    }
 
 private:
     // PortAudio callback
-    static int PortAudioCallback(
-        const void* input_buffer,
-        void* output_buffer,
-        unsigned long frames_per_buffer,
-        const PaStreamCallbackTimeInfo* time_info,
-        PaStreamCallbackFlags status_flags,
-        void* user_data);
+    static int PortAudioCallback(const void* input_buffer, void* output_buffer,
+                                 unsigned long frames_per_buffer,
+                                 const PaStreamCallbackTimeInfo* time_info,
+                                 PaStreamCallbackFlags status_flags, void* user_data);
 
     PaStream* stream_ = nullptr;
     AudioCallback user_callback_;
@@ -127,4 +131,4 @@ private:
     static bool is_initialized_;
 };
 
-} // namespace ffvoice
+}  // namespace ffvoice

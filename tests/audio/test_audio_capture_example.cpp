@@ -6,18 +6,19 @@
  * mocks, and utilities provided by the test architecture.
  */
 
-#include <gtest/gtest.h>
+#include "utils/test_helpers.h"
+#include "utils/test_signal_generator.h"
+
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "fixtures/audio_test_fixture.h"
 #include "mocks/mock_audio_device.h"
-#include "utils/test_signal_generator.h"
-#include "utils/test_helpers.h"
 
 using namespace ffvoice::test;
-using ::testing::Return;
 using ::testing::_;
 using ::testing::AtLeast;
+using ::testing::Return;
 
 /**
  * @class AudioCaptureTest
@@ -60,9 +61,7 @@ protected:
  */
 TEST_F(AudioCaptureTest, InitializesSuccessfully) {
     // Arrange
-    EXPECT_CALL(*mock_device_, Initialize())
-        .Times(1)
-        .WillOnce(Return(true));
+    EXPECT_CALL(*mock_device_, Initialize()).Times(1).WillOnce(Return(true));
 
     // Act
     bool result = mock_device_->Initialize();
@@ -76,9 +75,7 @@ TEST_F(AudioCaptureTest, InitializesSuccessfully) {
  */
 TEST_F(AudioCaptureTest, HandlesInitializationFailure) {
     // Arrange
-    EXPECT_CALL(*mock_device_, Initialize())
-        .Times(1)
-        .WillOnce(Return(false));
+    EXPECT_CALL(*mock_device_, Initialize()).Times(1).WillOnce(Return(false));
 
     // Act
     bool result = mock_device_->Initialize();
@@ -112,9 +109,7 @@ TEST_F(AudioCaptureTest, StopsCapturing) {
     // Arrange
     EXPECT_CALL(*mock_device_, Start()).WillOnce(Return(true));
     EXPECT_CALL(*mock_device_, Stop()).Times(1).WillOnce(Return(true));
-    EXPECT_CALL(*mock_device_, IsRunning())
-        .WillOnce(Return(true))
-        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*mock_device_, IsRunning()).WillOnce(Return(true)).WillRepeatedly(Return(false));
 
     // Act
     mock_device_->Start();
@@ -139,8 +134,7 @@ TEST_F(AudioCaptureTest, CapturesSineWaveData) {
     auto test_signal = signal_gen_->GenerateSineWave(440.0, 1000, 0.5);
     mock_device_->SimulateCapturedData(test_signal);
 
-    EXPECT_CALL(*mock_device_, Read(_, _))
-        .Times(AtLeast(1));
+    EXPECT_CALL(*mock_device_, Read(_, _)).Times(AtLeast(1));
 
     // Act: Capture audio
     std::vector<int16_t> captured(1024);
@@ -152,7 +146,7 @@ TEST_F(AudioCaptureTest, CapturesSineWaveData) {
 
     // Verify signal characteristics
     double rms = CalculateRMS(captured);
-    EXPECT_GT(rms, 0.0);  // Signal should not be silence
+    EXPECT_GT(rms, 0.0);      // Signal should not be silence
     EXPECT_LT(rms, 32767.0);  // Signal should not be clipping
 }
 
@@ -294,8 +288,7 @@ TEST_F(AudioCaptureTest, RetrievesDeviceInfo) {
     expected_info.is_default = true;
     expected_info.is_input = true;
 
-    EXPECT_CALL(*mock_device_, GetDeviceInfo())
-        .WillOnce(Return(expected_info));
+    EXPECT_CALL(*mock_device_, GetDeviceInfo()).WillOnce(Return(expected_info));
 
     // Act
     AudioDeviceInfo info = mock_device_->GetDeviceInfo();
@@ -320,8 +313,7 @@ TEST_F(AudioCaptureTest, ReturnsCorrectStreamParameters) {
     expected_params.bits_per_sample = 16;
     expected_params.buffer_frames = 1024;
 
-    EXPECT_CALL(*mock_device_, GetStreamParams())
-        .WillOnce(Return(expected_params));
+    EXPECT_CALL(*mock_device_, GetStreamParams()).WillOnce(Return(expected_params));
 
     // Act
     AudioStreamParams params = mock_device_->GetStreamParams();
@@ -347,16 +339,15 @@ TEST_F(AudioCaptureTest, BenchmarkCapturePerformance) {
 
     // Act & Measure
     std::vector<int16_t> captured(large_signal.size());
-    double elapsed_ms = TestHelpers::MeasureExecutionTime([&]() {
-        mock_device_->Read(captured.data(), captured.size());
-    });
+    double elapsed_ms = TestHelpers::MeasureExecutionTime(
+        [&]() { mock_device_->Read(captured.data(), captured.size()); });
 
     // Assert: Should complete quickly (< 100ms for mock)
     EXPECT_LT(elapsed_ms, 100.0);
 
     // Log performance
-    std::cout << "Capture benchmark: " << elapsed_ms << " ms for "
-              << large_signal.size() << " samples" << std::endl;
+    std::cout << "Capture benchmark: " << elapsed_ms << " ms for " << large_signal.size()
+              << " samples" << std::endl;
 }
 
 // ============================================================================

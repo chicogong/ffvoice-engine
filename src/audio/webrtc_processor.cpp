@@ -4,6 +4,7 @@
  */
 
 #include "audio/webrtc_processor.h"
+
 #include "utils/logger.h"
 
 #include <algorithm>
@@ -16,10 +17,7 @@ namespace ffvoice {
 // ============================================================================
 
 WebRTCProcessor::WebRTCProcessor(const WebRTCConfig& config)
-    : config_(config)
-    , buffer_pos_(0)
-    , frame_size_(0)
-    , has_voice_(false) {
+    : config_(config), buffer_pos_(0), frame_size_(0), has_voice_(false) {
 }
 
 WebRTCProcessor::~WebRTCProcessor() {
@@ -80,7 +78,8 @@ void WebRTCProcessor::ProcessFrame(int16_t* frame, size_t frame_size) {
 }
 
 void WebRTCProcessor::Process(int16_t* samples, size_t num_samples) {
-    if (num_samples == 0) return;
+    if (num_samples == 0)
+        return;
 
 #ifdef ENABLE_WEBRTC_APM
     // Frame rebuffering: 256 samples -> 480 samples
@@ -91,8 +90,7 @@ void WebRTCProcessor::Process(int16_t* samples, size_t num_samples) {
     while (input_pos < num_samples) {
         // Fill buffer up to frame_size_
         size_t to_copy = std::min(frame_size_ - buffer_pos_, num_samples - input_pos);
-        std::copy(samples + input_pos, samples + input_pos + to_copy,
-                  buffer_.data() + buffer_pos_);
+        std::copy(samples + input_pos, samples + input_pos + to_copy, buffer_.data() + buffer_pos_);
         buffer_pos_ += to_copy;
         input_pos += to_copy;
 
@@ -103,8 +101,7 @@ void WebRTCProcessor::Process(int16_t* samples, size_t num_samples) {
             // Copy processed frame back to output
             // Note: This introduces ~5ms latency but maintains correctness
             size_t output_start = input_pos - to_copy;
-            std::copy(buffer_.data(), buffer_.data() + frame_size_,
-                      samples + output_start);
+            std::copy(buffer_.data(), buffer_.data() + frame_size_, samples + output_start);
 
             buffer_pos_ = 0;
         }
@@ -127,4 +124,4 @@ void WebRTCProcessor::Reset() {
 #endif
 }
 
-} // namespace ffvoice
+}  // namespace ffvoice

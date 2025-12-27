@@ -5,11 +5,12 @@
 
 #pragma once
 
+#include <FLAC/stream_encoder.h>
+
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
-#include <FLAC/stream_encoder.h>
 
 namespace ffvoice {
 
@@ -37,10 +38,7 @@ public:
      * @param compression_level Compression level 0-8 (5=default, 8=max)
      * @return true if successful
      */
-    bool Open(const std::string& filename,
-              int sample_rate,
-              int channels,
-              int bits_per_sample = 16,
+    bool Open(const std::string& filename, int sample_rate, int channels, int bits_per_sample = 16,
               int compression_level = 5);
 
     /**
@@ -64,12 +62,16 @@ public:
     /**
      * @brief Check if file is open
      */
-    bool IsOpen() const { return encoder_ != nullptr; }
+    bool IsOpen() const {
+        return encoder_ != nullptr;
+    }
 
     /**
      * @brief Get total samples written
      */
-    size_t GetTotalSamples() const { return total_samples_; }
+    size_t GetTotalSamples() const {
+        return total_samples_;
+    }
 
     /**
      * @brief Get compression ratio (original_size / compressed_size)
@@ -86,4 +88,4 @@ private:
     size_t bytes_written_ = 0;
 };
 
-} // namespace ffvoice
+}  // namespace ffvoice
