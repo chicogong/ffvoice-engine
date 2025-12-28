@@ -314,6 +314,9 @@ endif()
 # Core library
 add_library(ffvoice-core STATIC ${FFVOICE_CORE_SOURCES})
 
+# Enable Position Independent Code for Python bindings on Linux
+set_target_properties(ffvoice-core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 target_link_libraries(ffvoice-core
     PUBLIC
         ${FFMPEG_LINK_LIBRARIES}
