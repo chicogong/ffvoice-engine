@@ -282,7 +282,7 @@ ffvoice 提供高性能的 Python 绑定，让您在 Python 中轻松使用所�
 
 ### 安装
 
-**从 PyPI 安装** (即将发布):
+**从 PyPI 安装** (推荐):
 ```bash
 pip install ffvoice
 ```
@@ -293,6 +293,37 @@ git clone https://github.com/chicogong/ffvoice-engine.git
 cd ffvoice-engine
 pip install .
 ```
+
+### 平台兼容性
+
+| 平台 | PyPI Wheel | 安装方式 | 状态 |
+|------|-----------|---------|------|
+| **🍎 Apple Silicon (M1/M2/M3)** | ✅ ARM64 | `pip install ffvoice` | ✅ 原生支持 |
+| **🍎 Intel Mac** | ❌ 不兼容 | 从源码编译 | ⚠️ 需手动构建 |
+| **🐧 Linux x86_64** | ✅ x86_64 | `pip install ffvoice` | ✅ 原生支持 |
+| **🪟 Windows** | ⏳ 计划中 | 从源码编译 | 🚧 开发中 |
+
+**重要说明**:
+- **Apple Silicon 用户**: 直接使用 `pip install ffvoice` 即可，性能最佳
+- **Intel Mac 用户**: PyPI wheel 不兼容，需要从源码编译:
+  ```bash
+  # 确保已安装依赖
+  brew install cmake ffmpeg portaudio flac
+
+  # 从源码安装
+  git clone https://github.com/chicogong/ffvoice-engine.git
+  cd ffvoice-engine
+  pip install .
+  ```
+- **Rosetta 2 用户**: ARM64 wheel 在 Rosetta 环境下不工作，请使用 ARM64 原生 Python:
+  ```bash
+  # 检查 Python 架构
+  python -c "import platform; print(platform.machine())"
+  # 应该输出 'arm64'，如果是 'x86_64' 则需要重新安装 ARM64 Python
+
+  # 强制使用 ARM64 Python
+  arch -arm64 python3 -m pip install ffvoice
+  ```
 
 ### 快速示例
 
