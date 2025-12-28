@@ -32,7 +32,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, macos-13]  # macos-13 is Intel, macos-latest is ARM
+        os: [ubuntu-latest, macos-latest]  # macos-latest is ARM64 on M1+ runners
 
     steps:
     - name: Checkout code
@@ -59,17 +59,15 @@ jobs:
         pip install build
         python -m build --wheel
 
-    - name: Upload wheel to release
-      uses: actions/upload-release-asset@v1
+    - name: Find and upload wheel to release
+      run: |
+        WHEEL_FILE=$(ls dist/*.whl | head -1)
+        echo "Uploading wheel: $WHEEL_FILE"
+        gh release upload ${{ github.ref_name }} "$WHEEL_FILE" --clobber
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./dist/*.whl
-        asset_name: ffvoice-wheel-${{ matrix.os }}.whl
-        asset_content_type: application/zip
 
-    - name: Upload to PyPI (optional)
+    - name: Upload to PyPI
       if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
       env:
         TWINE_USERNAME: __token__
@@ -96,12 +94,10 @@ jobs:
           pip install build
           python -m build --sdist
 
-      - name: Upload sdist to release
-        uses: actions/upload-release-asset@v1
+      - name: Find and upload sdist to release
+        run: |
+          SDIST_FILE=$(ls dist/*.tar.gz | head -1)
+          echo "Uploading sdist: $SDIST_FILE"
+          gh release upload ${{ github.ref_name }} "$SDIST_FILE" --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./dist/*.tar.gz
-          asset_name: ffvoice-source.tar.gz
-          asset_content_type: application/gzip
