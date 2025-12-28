@@ -180,6 +180,7 @@ if(ENABLE_RNNOISE)
     set_target_properties(rnnoise PROPERTIES
         C_STANDARD 99
         C_STANDARD_REQUIRED ON
+        POSITION_INDEPENDENT_CODE ON
     )
 
     message(STATUS "RNNoise configured successfully")
@@ -221,6 +222,9 @@ if(ENABLE_WHISPER)
     set(WHISPER_NO_FMA ON CACHE BOOL "" FORCE)
     set(WHISPER_NO_F16C ON CACHE BOOL "" FORCE)
     set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
+
+    # Enable Position Independent Code for Python bindings
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "" FORCE)
 
     FetchContent_MakeAvailable(whisper)
 
