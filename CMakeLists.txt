@@ -274,7 +274,11 @@ endif()
 if(BUILD_PYTHON)
     message(STATUS "Python bindings: Enabled")
 
-    # Find Python
+    # Find Python - use PYTHON_EXECUTABLE if provided (from setup.py)
+    if(DEFINED PYTHON_EXECUTABLE)
+        set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
+        message(STATUS "Using Python from setup.py: ${PYTHON_EXECUTABLE}")
+    endif()
     find_package(Python COMPONENTS Interpreter Development REQUIRED)
 
     # Find pybind11
