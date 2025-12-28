@@ -59,6 +59,15 @@ jobs:
         pip install build
         python -m build --wheel
 
+    - name: Repair wheel with auditwheel (Linux only)
+      if: runner.os == 'Linux'
+      run: |
+        pip install auditwheel
+        # Repair wheel to manylinux format
+        auditwheel repair dist/*.whl -w dist/
+        # Remove the original linux_x86_64 wheel
+        rm -f dist/*-linux_x86_64.whl
+
     - name: Find and upload wheel to release
       run: |
         WHEEL_FILE=$(ls dist/*.whl | head -1)
