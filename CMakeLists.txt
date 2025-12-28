@@ -8,9 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Set architecture for macOS (use native architecture)
-if(APPLE)
-    set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "macOS architecture" FORCE)
+# Set architecture for macOS (allow override from setup.py for universal2 builds)
+if(APPLE AND NOT DEFINED CMAKE_OSX_ARCHITECTURES)
+    # Default to native architecture if not specified
+    set(CMAKE_OSX_ARCHITECTURES "${CMAKE_SYSTEM_PROCESSOR}" CACHE STRING "macOS architecture" FORCE)
 endif()
 
 # Build options
@@ -27,12 +28,19 @@ if(MSVC)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic)
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
-        # Use -march=native only on x86_64, not on ARM
-        # On macOS, check CMAKE_OSX_ARCHITECTURES instead of CMAKE_SYSTEM_PROCESSOR
+        # Use -march=native only for single-architecture builds on x86_64
+        # Skip for universal2 builds (multiple architectures) as -march=native is incompatible
         if(APPLE)
-            if(CMAKE_OSX_ARCHITECTURES MATCHES "x86_64|AMD64")
+            # Check if building for multiple architectures (universal2)
+            string(FIND "${CMAKE_OSX_ARCHITECTURES}" ";" IS_UNIVERSAL)
+            if(IS_UNIVERSAL GREATER -1)
+                # Universal2 build - skip -march=native
+                add_compile_options(-O3)
+            elseif(CMAKE_OSX_ARCHITECTURES MATCHES "x86_64|AMD64")
+                # Single x86_64 build
                 add_compile_options(-O3 -march=native)
             else()
+                # Single ARM64 build
                 add_compile_options(-O3)
             endif()
         elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")

@@ -51,8 +51,13 @@ class CMakeBuild(build_ext):
 
         # Platform-specific configuration
         if platform.system() == "Darwin":  # macOS
-            # Use native architecture (arm64 or x86_64)
-            cmake_args.append(f"-DCMAKE_OSX_ARCHITECTURES={platform.machine()}")
+            # Build for native architecture (arm64 on Apple Silicon, x86_64 on Intel)
+            # Note: Universal2 builds require universal2 dependencies which adds complexity
+            arch = platform.machine()
+            cmake_args.append(f"-DCMAKE_OSX_ARCHITECTURES={arch}")
+            # Use macOS 11.0 for ARM64 (Big Sur+), 10.9 for x86_64
+            deployment_target = "11.0" if arch == "arm64" else "10.9"
+            cmake_args.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={deployment_target}")
 
         # Build arguments
         build_args = ["--config", cfg]
