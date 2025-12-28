@@ -23,10 +23,65 @@ High-performance offline speech recognition library for Python, powered by C++ f
 
 🛠️ **Easy to Use**
 - Simple Python API
-- One-line installation (coming soon)
+- One-line installation: `pip install ffvoice`
 - Comprehensive examples
 
 ## Installation
+
+### Platform Compatibility
+
+| Platform | PyPI Wheel | Installation Method | Status |
+|----------|-----------|-------------------|--------|
+| **🍎 Apple Silicon (M1/M2/M3)** | ✅ ARM64 | `pip install ffvoice` | ✅ Fully Supported |
+| **🍎 Intel Mac** | ❌ Not Compatible | Build from source | ⚠️ Manual Build Required |
+| **🐧 Linux x86_64** | ✅ x86_64 | `pip install ffvoice` | ✅ Fully Supported |
+| **🪟 Windows** | ⏳ Coming Soon | Build from source | 🚧 Under Development |
+
+#### Quick Install (Recommended Platforms)
+
+**Apple Silicon (M1/M2/M3) & Linux x86_64:**
+```bash
+pip install ffvoice
+```
+
+#### Platform-Specific Notes
+
+**Apple Silicon Users** 🍎
+- ✅ One-line install works out of the box
+- ✅ Native ARM64 performance
+- ✅ No Rosetta 2 required
+- **Important**: Make sure Python is running in ARM64 mode:
+  ```bash
+  python -c "import platform; print(platform.machine())"
+  # Should output: arm64
+  ```
+
+**Intel Mac Users** 🍎
+- ⚠️ PyPI wheel is **not compatible** with Intel Macs
+- **Solution**: Build from source (see instructions below)
+- The ARM64 wheel cannot be used even with Rosetta 2 translation
+
+**Rosetta 2 Users** ⚠️
+- If you see `ImportError: mach-o file, but is an incompatible architecture`, you're running x86_64 Python
+- **Fix**: Use native ARM64 Python instead:
+  ```bash
+  # Force ARM64 architecture
+  arch -arm64 python3 -m pip install ffvoice
+
+  # Or permanently switch to ARM64 Python
+  arch -arm64 /bin/bash
+  python3 -m pip install ffvoice
+  ```
+
+**Linux Users** 🐧
+- ✅ Direct install from PyPI works
+- Tested on Ubuntu 20.04+, Debian 11+
+- Requires system libraries (see Prerequisites below)
+
+**Windows Users** 🪟
+- Currently requires building from source
+- MSVC 2019+ or MinGW-w64 required
+- Windows wheels coming in future release
 
 ### Prerequisites
 
