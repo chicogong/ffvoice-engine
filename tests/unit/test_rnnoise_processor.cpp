@@ -1,7 +1,10 @@
 /**
  * @file test_rnnoise_processor.cpp
  * @brief Unit tests for RNNoiseProcessor
+ * @note Only compiled when ENABLE_RNNOISE is defined
  */
+
+#ifdef ENABLE_RNNOISE
 
 #include "audio/rnnoise_processor.h"
 
@@ -351,3 +354,5 @@ TEST_F(RNNoiseProcessorTest, EdgeCase_Reinitialize) {
     
     EXPECT_TRUE(true);
 }
+
+#endif  // ENABLE_RNNOISE

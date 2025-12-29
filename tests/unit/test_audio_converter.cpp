@@ -1,7 +1,10 @@
 /**
  * @file test_audio_converter.cpp
  * @brief Unit tests for AudioConverter
+ * @note Only compiled when ENABLE_WHISPER is defined
  */
+
+#ifdef ENABLE_WHISPER
 
 #include "utils/audio_converter.h"
 
@@ -275,3 +278,5 @@ TEST_F(AudioConverterTest, LoadAndConvert_UnsupportedExtension) {
     
     EXPECT_FALSE(result);
 }
+
+#endif  // ENABLE_WHISPER
