@@ -75,6 +75,7 @@ jobs:
         rm -f dist/*-linux_x86_64.whl
 
     - name: Find and upload wheel to release
+      shell: bash
       run: |
         WHEEL_FILE=$(ls dist/*.whl | head -1)
         echo "Uploading wheel: $WHEEL_FILE"
@@ -84,6 +85,7 @@ jobs:
 
     - name: Upload to PyPI
       if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+      shell: bash
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
