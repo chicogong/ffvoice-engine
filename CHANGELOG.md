@@ -8,9 +8,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### 计划中 / Planned
-- 实时语音识别（VAD 分段）
+- macOS Intel x86_64 wheels（需付费 GitHub runner）
 - 多音轨混音
 - GUI 客户端
+
+---
+
+## [0.5.5] - 2025-12-29
+
+### 🎉 重大更新 / Major Release
+**首个支持 Windows 平台的版本！** 现在用户可以在 Linux、macOS (ARM64) 和 Windows 上直接使用 `pip install ffvoice` 安装预编译 wheels。
+
+### 新增 / Added
+- ✨ **Windows x86_64 平台支持**
+  - 预编译 wheels 支持 Python 3.9-3.12
+  - vcpkg 依赖管理（FFmpeg、PortAudio、FLAC）
+  - GitHub Actions 自动构建和发布
+  - Windows MSBuild 编译支持
+
+- 📦 **PyPI 多平台 Wheels 发布**
+  - **13 个预编译 wheels** 已发布到 PyPI
+    - 4 × Linux x86_64 (manylinux_2_39)
+    - 4 × macOS ARM64 (macosx_11_0)
+    - 4 × Windows x86_64 (win_amd64)
+  - 1 × Source distribution (sdist)
+  - 支持 Python 3.9, 3.10, 3.11, 3.12
+
+### 改进 / Improved
+- 🔧 **Windows 平台优化**
+  - 条件编译：Windows 上禁用 RNNoise（MSVC 不支持 VLA）
+  - 添加 `_USE_MATH_DEFINES` 支持 M_PI 宏
+  - MSBuild 并行构建参数优化 (`/m:4`)
+  - WHISPER_MODEL_PATH 路径处理改进
+
+- 📚 **文档更新**
+  - README: 添加 Windows 安装和编译指南
+  - README: 更新平台兼容性表格
+  - GitHub Release: 详细的 v0.5.5 发布说明
+
+### 修复 / Fixed
+- 🐛 修复 Windows MSBuild 并行构建参数错误 (v0.5.1)
+- 🐛 修复 Windows VLA 编译错误（禁用 RNNoise）(v0.5.2)
+- 🐛 修复 Windows M_PI 宏未定义错误 (v0.5.3)
+- 🐛 修复 Windows RNNoise bindings 条件编译 (v0.5.4)
+- 🐛 修复 GitHub Actions release workflow shell 环境 (v0.5.5)
+
+### 技术细节 / Technical Details
+- **构建系统**
+  - Windows: vcpkg + MSBuild
+  - Linux: manylinux container
+  - macOS: macos-latest (ARM64)
+  - 构建时间：Windows ~25min（FFmpeg 编译），Linux/macOS ~2min
+
+- **平台限制**
+  - ⚠️ Windows: RNNoise 降噪功能禁用（MSVC VLA 限制）
+  - ⚠️ macOS Intel: 需付费 GitHub runner，暂不支持预编译 wheels
+
+### 链接 / Links
+- PyPI: https://pypi.org/project/ffvoice/0.5.1/
+- GitHub Release: https://github.com/chicogong/ffvoice-engine/releases/tag/v0.5.5
+- 完整变更: https://github.com/chicogong/ffvoice-engine/compare/v0.4.7...v0.5.5
 
 ---
 
@@ -130,7 +187,8 @@ Version format: `MAJOR.MINOR.PATCH`
 
 ---
 
-[Unreleased]: https://github.com/chicogong/ffvoice-engine/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/chicogong/ffvoice-engine/compare/v0.5.5...HEAD
+[0.5.5]: https://github.com/chicogong/ffvoice-engine/compare/v0.3.0...v0.5.5
 [0.3.0]: https://github.com/chicogong/ffvoice-engine/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/chicogong/ffvoice-engine/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/chicogong/ffvoice-engine/releases/tag/v0.1.0
