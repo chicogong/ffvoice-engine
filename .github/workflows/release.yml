@@ -31,7 +31,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]  # macos-latest is ARM64 on M1+ runners
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12']  # Python 3.8 EOL, incompatible with modern auditwheel
 
     steps:
     - name: Checkout code
@@ -62,15 +62,8 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         pip install --upgrade auditwheel
-        # Python 3.8 gets older auditwheel (6.1.0) which defaults to manylinux_2_5
-        # For Python 3.8, manually specify manylinux_2_31 to avoid symbol version issues
-        # For Python 3.9+, let auditwheel auto-detect (gets 6.5+ which handles this correctly)
-        if [[ "${{ matrix.python-version }}" == "3.8" ]]; then
-          auditwheel repair dist/*.whl -w dist/ --plat manylinux_2_31_x86_64 || \
-          auditwheel repair dist/*.whl -w dist/ --plat manylinux2014_x86_64
-        else
-          auditwheel repair dist/*.whl -w dist/
-        fi
+        # Auto-detect appropriate manylinux version (auditwheel 6.5+ for Python 3.9+)
+        auditwheel repair dist/*.whl -w dist/
         # Remove the original linux_x86_64 wheel
         rm -f dist/*-linux_x86_64.whl
 
