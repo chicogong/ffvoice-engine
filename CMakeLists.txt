@@ -142,10 +142,15 @@ else()
     message(STATUS "WebRTC APM: Disabled (use -DENABLE_WEBRTC_APM=ON to enable)")
 endif()
 
-# RNNoise (conditional)
+# RNNoise (conditional - not supported on Windows due to VLA)
 if(ENABLE_RNNOISE)
-    message(STATUS "RNNoise: Enabled")
-    add_compile_definitions(ENABLE_RNNOISE)
+    if(MSVC)
+        message(WARNING "RNNoise is not supported on Windows (MSVC doesn't support C99 VLA)")
+        message(STATUS "RNNoise: Disabled on Windows")
+        set(ENABLE_RNNOISE OFF CACHE BOOL "" FORCE)
+    else()
+        message(STATUS "RNNoise: Enabled")
+        add_compile_definitions(ENABLE_RNNOISE)
 
     # Fetch RNNoise library via CMake FetchContent
     include(FetchContent)
@@ -198,6 +203,7 @@ if(ENABLE_RNNOISE)
     list(APPEND FFVOICE_CORE_SOURCES
         src/audio/rnnoise_processor.cpp
     )
+    endif()  # End of if(MSVC) else block
 else()
     message(STATUS "RNNoise: Disabled (use -DENABLE_RNNOISE=ON to enable)")
 endif()
