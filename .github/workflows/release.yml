@@ -62,8 +62,8 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         pip install auditwheel
-        # Repair wheel to manylinux format (use manylinux_2_35 for Ubuntu 22.04)
-        auditwheel repair dist/*.whl -w dist/ --plat manylinux_2_35_x86_64
+        # Repair wheel to manylinux format (let auditwheel auto-detect the appropriate version)
+        auditwheel repair dist/*.whl -w dist/
         # Remove the original linux_x86_64 wheel
         rm -f dist/*-linux_x86_64.whl
 
