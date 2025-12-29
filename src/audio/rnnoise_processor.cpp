@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace ffvoice {
 
@@ -93,19 +94,29 @@ void RNNoiseProcessor::Process(int16_t* samples, size_t num_samples) {
     size_t input_pos = 0;
     while (input_pos < num_samples) {
         // Copy samples to rebuffer
-        size_t to_copy = std::min(frame_size_ * channels_ - rebuffer_pos_, num_samples - input_pos);
+        // Check for potential overflow in frame_size_ * channels_
+        size_t frame_total_size = frame_size_ * channels_;
+        if (frame_size_ > 0 && frame_total_size / frame_size_ != static_cast<size_t>(channels_)) {
+            LOG_ERROR("RNNoiseProcessor: Buffer size overflow detected (frame_size=%zu, channels=%d)",
+                     frame_size_, channels_);
+            return;
+        }
+
+        size_t remaining_in_rebuffer = frame_total_size - rebuffer_pos_;
+        size_t remaining_in_input = num_samples - input_pos;
+        size_t to_copy = std::min(remaining_in_rebuffer, remaining_in_input);
         std::copy(float_buffer_.begin() + input_pos, float_buffer_.begin() + input_pos + to_copy,
                   rebuffer_.begin() + rebuffer_pos_);
         rebuffer_pos_ += to_copy;
         input_pos += to_copy;
 
         // Process complete frame
-        if (rebuffer_pos_ >= frame_size_ * channels_) {
+        if (rebuffer_pos_ >= frame_total_size) {
             ProcessFrame(rebuffer_.data(), frame_size_);
 
             // Copy processed data back to float_buffer
             size_t output_start = input_pos - to_copy;
-            for (size_t i = 0; i < frame_size_ * channels_; ++i) {
+            for (size_t i = 0; i < frame_total_size; ++i) {
                 if (output_start + i < num_samples) {
                     float_buffer_[output_start + i] = rebuffer_[i];
                 }
@@ -177,9 +188,20 @@ void RNNoiseProcessor::Reset() {
     states_.resize(channels_);
     for (int ch = 0; ch < channels_; ++ch) {
         states_[ch] = rnnoise_create(nullptr);
+        if (!states_[ch]) {
+            LOG_ERROR("RNNoiseProcessor: Failed to recreate RNNoise state for channel %d", ch);
+            // Clean up any successfully created states
+            for (int i = 0; i < ch; ++i) {
+                if (states_[i]) {
+                    rnnoise_destroy(states_[i]);
+                }
+            }
+            states_.clear();
+            return;
+        }
     }
 
-    log_info("RNNoiseProcessor: State reset");
+    log_info("RNNoiseProcessor: State reset successfully");
 #endif
 }
 

@@ -104,6 +104,12 @@ void AudioConverter::Resample(const float* input, size_t input_size, int input_r
         return;
     }
 
+    // Validate sample rates
+    if (input_rate <= 0 || output_rate <= 0) {
+        LOG_ERROR("Invalid sample rate: input=%d, output=%d", input_rate, output_rate);
+        return;
+    }
+
     // Linear interpolation resampling
     double ratio = static_cast<double>(input_rate) / output_rate;
 

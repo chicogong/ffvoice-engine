@@ -153,6 +153,11 @@ int AudioCaptureDevice::PortAudioCallback(const void* input_buffer, void* output
         return paContinue;
     }
 
+    // Thread-safe check: only execute callback if actively capturing
+    if (!self->callback_active_.load()) {
+        return paContinue;
+    }
+
     // Check for input overflow
     if (status_flags & paInputOverflow) {
         log_error("Input overflow detected");
@@ -208,6 +213,7 @@ bool AudioCaptureDevice::Start(AudioCallback callback) {
         return false;
     }
 
+    callback_active_.store(true);  // Enable callback execution
     is_capturing_ = true;
     log_info("Audio capture started");
     return true;
@@ -217,6 +223,8 @@ void AudioCaptureDevice::Stop() {
     if (!stream_ || !is_capturing_) {
         return;
     }
+
+    callback_active_.store(false);  // Disable callback execution
 
     PaError err = Pa_StopStream(stream_);
     if (err != paNoError) {

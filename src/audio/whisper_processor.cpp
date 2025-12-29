@@ -60,6 +60,13 @@ bool WhisperProcessor::Initialize() {
         return true;
     }
 
+    // Validate model path is not empty
+    if (config_.model_path.empty()) {
+        last_error_ = "Model path not set. Please set WhisperConfig::model_path to a valid model file";
+        LOG_ERROR("%s", last_error_.c_str());
+        return false;
+    }
+
     LOG_INFO("Initializing Whisper processor...");
     LOG_INFO("  Model: %s", config_.model_path.c_str());
     LOG_INFO("  Language: %s", config_.language.c_str());

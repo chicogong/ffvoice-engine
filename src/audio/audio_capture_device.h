@@ -7,6 +7,7 @@
 
 #include <portaudio.h>
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
@@ -127,6 +128,7 @@ private:
     int sample_rate_ = 0;
     int channels_ = 0;
     bool is_capturing_ = false;
+    std::atomic<bool> callback_active_{false};  // Thread-safe flag for callback execution
 
     static bool is_initialized_;
 };

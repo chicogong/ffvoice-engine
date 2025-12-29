@@ -102,6 +102,16 @@ PYBIND11_MODULE(_ffvoice, m) {
                  // Get buffer info
                  py::buffer_info buf = audio_array.request();
 
+                 // Validate buffer pointer
+                 if (!buf.ptr) {
+                     throw std::runtime_error("Audio array has null data pointer");
+                 }
+
+                 // Validate buffer size
+                 if (buf.size == 0) {
+                     throw std::runtime_error("Audio array is empty");
+                 }
+
                  // Validate dimensions (should be 1D array)
                  if (buf.ndim != 1) {
                      throw std::runtime_error(
@@ -231,6 +241,16 @@ PYBIND11_MODULE(_ffvoice, m) {
              [](RNNoiseProcessor& self, py::array_t<int16_t> audio_array) {
                  // Get buffer info
                  py::buffer_info buf = audio_array.request();
+
+                 // Validate buffer pointer
+                 if (!buf.ptr) {
+                     throw std::runtime_error("Audio array has null data pointer");
+                 }
+
+                 // Validate buffer size
+                 if (buf.size == 0) {
+                     throw std::runtime_error("Audio array is empty");
+                 }
 
                  // Validate dimensions (should be 1D array)
                  if (buf.ndim != 1) {
