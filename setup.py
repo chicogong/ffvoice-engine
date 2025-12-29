@@ -59,6 +59,10 @@ class CMakeBuild(build_ext):
             deployment_target = "11.0" if arch == "arm64" else "10.9"
             cmake_args.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={deployment_target}")
 
+            # Set correct platform tag for wheel (avoid misleading universal2 tag)
+            # This ensures wheel is tagged as macosx_11_0_arm64 or macosx_10_9_x86_64
+            self.plat_name = f"macosx-{deployment_target.replace('.', '_')}-{arch}"
+
         # Build arguments
         build_args = ["--config", cfg]
 
