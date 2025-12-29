@@ -30,7 +30,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, macos-15-large, windows-latest]  # macos-latest=ARM64, macos-15-large=Intel, ubuntu=x86_64, windows=x86_64
+        os: [ubuntu-latest, macos-latest, windows-latest]  # Linux x86_64, macOS ARM64, Windows x86_64 (all free runners)
         python-version: ['3.9', '3.10', '3.11', '3.12']  # Python 3.8 EOL, incompatible with modern auditwheel
 
     steps:
