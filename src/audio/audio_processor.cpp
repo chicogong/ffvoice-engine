@@ -3,6 +3,11 @@
  * @brief Audio processing implementations
  */
 
+// Must be defined before including <cmath> for M_PI on Windows
+#ifdef _WIN32
+#define _USE_MATH_DEFINES
+#endif
+
 #include "audio/audio_processor.h"
 
 #include "utils/logger.h"

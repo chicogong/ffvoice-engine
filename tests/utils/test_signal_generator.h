@@ -10,6 +10,11 @@
 #ifndef FFVOICE_TESTS_UTILS_TEST_SIGNAL_GENERATOR_H
 #define FFVOICE_TESTS_UTILS_TEST_SIGNAL_GENERATOR_H
 
+// Must be defined before including <cmath> for M_PI on Windows
+#ifdef _WIN32
+#define _USE_MATH_DEFINES
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <complex>
