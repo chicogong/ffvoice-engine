@@ -17,7 +17,7 @@ Example:
     ...     print(segment.text)
 """
 
-__version__ = "0.4.8"
+__version__ = "0.4.9"
 __author__ = "ffvoice-engine contributors"
 __license__ = "MIT"
 
