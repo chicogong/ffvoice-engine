@@ -11,6 +11,25 @@ from pathlib import Path
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 
+try:
+    from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+
+    class bdist_wheel(_bdist_wheel):
+        """Custom bdist_wheel to set correct platform tag for macOS"""
+
+        def finalize_options(self):
+            super().finalize_options()
+            # Override platform tag on macOS to reflect actual architecture
+            if platform.system() == "Darwin":
+                arch = platform.machine()
+                deployment_target = "11.0" if arch == "arm64" else "10.9"
+                # Set platform tag: macosx_11_0_arm64 or macosx_10_9_x86_64
+                self.plat_name = f"macosx-{deployment_target.replace('.', '_')}-{arch}"
+                self.plat_name_supplied = True
+
+except ImportError:
+    bdist_wheel = None
+
 
 class CMakeExtension(Extension):
     """Custom Extension class for CMake-based builds"""
@@ -58,10 +77,6 @@ class CMakeBuild(build_ext):
             # Use macOS 11.0 for ARM64 (Big Sur+), 10.9 for x86_64
             deployment_target = "11.0" if arch == "arm64" else "10.9"
             cmake_args.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={deployment_target}")
-
-            # Set correct platform tag for wheel (avoid misleading universal2 tag)
-            # This ensures wheel is tagged as macosx_11_0_arm64 or macosx_10_9_x86_64
-            self.plat_name = f"macosx-{deployment_target.replace('.', '_')}-{arch}"
 
         # Build arguments
         build_args = ["--config", cfg]
@@ -124,7 +139,10 @@ setup(
     packages=["ffvoice"],
     package_dir={"": "python"},
     ext_modules=[CMakeExtension("ffvoice._ffvoice")],
-    cmdclass={"build_ext": CMakeBuild},
+    cmdclass={
+        "build_ext": CMakeBuild,
+        "bdist_wheel": bdist_wheel,
+    } if bdist_wheel else {"build_ext": CMakeBuild},
     zip_safe=False,
     python_requires=">=3.9",
     classifiers=[
