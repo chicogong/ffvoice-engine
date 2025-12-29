@@ -10,7 +10,9 @@
 
 // Core ffvoice headers
 #include "audio/audio_capture_device.h"
+#ifdef ENABLE_RNNOISE
 #include "audio/rnnoise_processor.h"
+#endif
 #include "audio/vad_segmenter.h"
 #include "audio/whisper_processor.h"
 #include "media/wav_writer.h"
@@ -207,6 +209,7 @@ PYBIND11_MODULE(_ffvoice, m) {
         .def_static("get_default_input_device", &AudioCaptureDevice::GetDefaultInputDevice,
                     "Get default input device ID");
 
+#ifdef ENABLE_RNNOISE
     // ========== RNNoise Processor ==========
 
     // RNNoiseConfig
@@ -254,6 +257,7 @@ PYBIND11_MODULE(_ffvoice, m) {
              "Reset internal state")
         .def("get_vad_probability", &RNNoiseProcessor::GetVADProbability,
              "Get last VAD probability (0.0-1.0)");
+#endif  // ENABLE_RNNOISE
 
     // ========== VAD Segmenter ==========
 
