@@ -62,8 +62,15 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         pip install --upgrade auditwheel
-        # Repair wheel to manylinux format (let auditwheel auto-detect the appropriate version)
-        auditwheel repair dist/*.whl -w dist/
+        # Python 3.8 gets older auditwheel (6.1.0) which defaults to manylinux_2_5
+        # For Python 3.8, manually specify manylinux_2_31 to avoid symbol version issues
+        # For Python 3.9+, let auditwheel auto-detect (gets 6.5+ which handles this correctly)
+        if [[ "${{ matrix.python-version }}" == "3.8" ]]; then
+          auditwheel repair dist/*.whl -w dist/ --plat manylinux_2_31_x86_64 || \
+          auditwheel repair dist/*.whl -w dist/ --plat manylinux2014_x86_64
+        else
+          auditwheel repair dist/*.whl -w dist/
+        fi
         # Remove the original linux_x86_64 wheel
         rm -f dist/*-linux_x86_64.whl
 
