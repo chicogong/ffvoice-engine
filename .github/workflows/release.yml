@@ -30,7 +30,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]  # macos-latest is ARM64 on M1+ runners
+        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]  # macos-latest=ARM64, macos-13=Intel, ubuntu=x86_64, windows=x86_64
         python-version: ['3.9', '3.10', '3.11', '3.12']  # Python 3.8 EOL, incompatible with modern auditwheel
 
     steps:
@@ -52,6 +52,17 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         brew install ffmpeg portaudio flac cmake
+
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+        choco install ffmpeg
+        # vcpkg for portaudio and flac
+        git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+        C:\vcpkg\bootstrap-vcpkg.bat
+        C:\vcpkg\vcpkg install portaudio:x64-windows flac:x64-windows
+        echo "CMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" >> $env:GITHUB_ENV
 
     - name: Build wheels
       run: |
@@ -109,3 +120,12 @@ jobs:
           gh release upload ${{ github.ref_name }} "$SDIST_FILE" --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to PyPI
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          pip install twine
+          twine upload dist/*.tar.gz --skip-existing || echo "PyPI upload skipped (no token or already exists)"

@@ -64,6 +64,11 @@ class CMakeBuild(build_ext):
             "-DENABLE_WHISPER=ON",
         ]
 
+        # Add vcpkg toolchain file if available (for Windows vcpkg builds)
+        toolchain_file = os.environ.get("CMAKE_TOOLCHAIN_FILE")
+        if toolchain_file:
+            cmake_args.append(f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}")
+
         # Build type (Release or Debug)
         cfg = "Debug" if self.debug else "Release"
         cmake_args.append(f"-DCMAKE_BUILD_TYPE={cfg}")
@@ -77,6 +82,9 @@ class CMakeBuild(build_ext):
             # Use macOS 11.0 for ARM64 (Big Sur+), 10.9 for x86_64
             deployment_target = "11.0" if arch == "arm64" else "10.9"
             cmake_args.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={deployment_target}")
+        elif platform.system() == "Windows":  # Windows
+            # Use multi-threaded DLL runtime
+            cmake_args.append("-DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON")
 
         # Build arguments
         build_args = ["--config", cfg]
@@ -159,6 +167,7 @@ setup(
         "Programming Language :: C++",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
+        "Operating System :: Microsoft :: Windows",
     ],
     keywords="speech-recognition asr whisper voice-activity-detection noise-reduction rnnoise offline-transcription real-time-audio",
     install_requires=[
