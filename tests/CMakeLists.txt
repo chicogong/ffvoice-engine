@@ -39,6 +39,10 @@ set(TEST_SOURCES
     unit/test_wav_writer.cpp
     unit/test_flac_writer.cpp
     unit/test_signal_generator.cpp
+    unit/test_audio_converter.cpp
+    unit/test_vad_segmenter.cpp
+    unit/test_rnnoise_processor.cpp
+    unit/test_logger.cpp
     # Add more test files as they are created
     # unit/test_audio_capture.cpp
     # unit/test_audio_file_writer.cpp
