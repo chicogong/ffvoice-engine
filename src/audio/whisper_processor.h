@@ -54,7 +54,11 @@ enum class WhisperModelType {
  * @brief Configuration for Whisper processor
  */
 struct WhisperConfig {
+#ifdef WHISPER_MODEL_PATH
     std::string model_path = WHISPER_MODEL_PATH;  ///< Path to whisper model file
+#else
+    std::string model_path = "";  ///< Path to whisper model file (must be set manually)
+#endif
     std::string language = "auto";                ///< Language code ("auto", "zh", "en", etc.)
     WhisperModelType model_type = WhisperModelType::TINY;  ///< Model size selection
     int n_threads = 4;                            ///< Number of threads for inference
