@@ -30,7 +30,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]  # macos-latest=ARM64, macos-13=Intel, ubuntu=x86_64, windows=x86_64
+        os: [ubuntu-latest, macos-latest, macos-15-large, windows-latest]  # macos-latest=ARM64, macos-15-large=Intel, ubuntu=x86_64, windows=x86_64
         python-version: ['3.9', '3.10', '3.11', '3.12']  # Python 3.8 EOL, incompatible with modern auditwheel
 
     steps:
@@ -56,12 +56,8 @@ jobs:
     - name: Install dependencies (Windows)
       if: runner.os == 'Windows'
       run: |
-        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
-        choco install ffmpeg
-        # vcpkg for portaudio and flac
-        git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
-        C:\vcpkg\bootstrap-vcpkg.bat
-        C:\vcpkg\vcpkg install portaudio:x64-windows flac:x64-windows
+        # vcpkg is pre-installed on GitHub Actions Windows runners
+        C:\vcpkg\vcpkg install ffmpeg:x64-windows portaudio:x64-windows libflac:x64-windows
         echo "CMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" >> $env:GITHUB_ENV
 
     - name: Build wheels
