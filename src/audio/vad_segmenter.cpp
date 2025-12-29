@@ -145,7 +145,7 @@ void VADSegmenter::Reset() {
     LOG_INFO("VADSegmenter: Reset");
 }
 
-void VADSegmenter::UpdateAdaptiveThreshold(float vad_prob) {
+void VADSegmenter::UpdateAdaptiveThreshold(float /* vad_prob */) {
     // Use exponential moving average to adapt threshold
     // The threshold moves towards the average VAD probability
     if (total_frames_ > 0) {

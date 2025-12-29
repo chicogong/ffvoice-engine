@@ -65,8 +65,9 @@ bool WhisperProcessor::Initialize() {
     LOG_INFO("  Language: %s", config_.language.c_str());
     LOG_INFO("  Threads: %d", config_.n_threads);
 
-    // Load the model
-    ctx_ = whisper_init_from_file(config_.model_path.c_str());
+    // Load the model with default context params
+    struct whisper_context_params cparams = whisper_context_default_params();
+    ctx_ = whisper_init_from_file_with_params(config_.model_path.c_str(), cparams);
     if (!ctx_) {
         last_error_ = "Failed to load whisper model from: " + config_.model_path;
         LOG_ERROR("%s", last_error_.c_str());
@@ -302,7 +303,7 @@ void WhisperProcessor::ExtractSegments(std::vector<TranscriptionSegment>& segmen
 
         // Optional: Print segment
         if (config_.print_timestamps) {
-            LOG_INFO("[%lld -> %lld] %s", t0, t1, text);
+            LOG_INFO("[%ld -> %ld] %s", static_cast<long>(t0), static_cast<long>(t1), text);
         }
     }
 }
