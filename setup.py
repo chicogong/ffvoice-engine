@@ -89,11 +89,16 @@ class CMakeBuild(build_ext):
         # Build arguments
         build_args = ["--config", cfg]
 
-        # Parallel build
-        if hasattr(self, "parallel") and self.parallel:
-            build_args.extend(["--", f"-j{self.parallel}"])
+        # Parallel build (platform-specific)
+        if platform.system() == "Windows":
+            # MSBuild uses /m for parallel builds
+            build_args.extend(["--", "/m:4"])
         else:
-            build_args.extend(["--", "-j4"])
+            # Unix Makefiles use -j for parallel builds
+            if hasattr(self, "parallel") and self.parallel:
+                build_args.extend(["--", f"-j{self.parallel}"])
+            else:
+                build_args.extend(["--", "-j4"])
 
         env = os.environ.copy()
         env["CXXFLAGS"] = f'{env.get("CXXFLAGS", "")} -DVERSION_INFO=\\"{self.distribution.get_version()}\\"'
