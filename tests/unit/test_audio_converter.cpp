@@ -6,6 +6,11 @@
 
 #ifdef ENABLE_WHISPER
 
+// Must be defined before including <cmath> for M_PI on Windows
+#ifdef _WIN32
+#define _USE_MATH_DEFINES
+#endif
+
 #include "utils/audio_converter.h"
 
 #include <gtest/gtest.h>

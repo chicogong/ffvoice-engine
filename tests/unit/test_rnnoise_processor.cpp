@@ -6,6 +6,11 @@
 
 #ifdef ENABLE_RNNOISE
 
+// Must be defined before including <cmath> for M_PI on Windows
+#ifdef _WIN32
+#define _USE_MATH_DEFINES
+#endif
+
 #include "audio/rnnoise_processor.h"
 
 #include <gtest/gtest.h>

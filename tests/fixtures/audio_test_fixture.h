@@ -9,6 +9,11 @@
 #ifndef FFVOICE_TESTS_FIXTURES_AUDIO_TEST_FIXTURE_H
 #define FFVOICE_TESTS_FIXTURES_AUDIO_TEST_FIXTURE_H
 
+// Must be defined before including <cmath> for M_PI on Windows
+#ifdef _WIN32
+#define _USE_MATH_DEFINES
+#endif
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
