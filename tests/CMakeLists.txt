@@ -37,6 +37,7 @@ include_directories(
 set(TEST_SOURCES
     test_main.cpp
     unit/test_wav_writer.cpp
+    unit/test_flac_writer.cpp
     unit/test_signal_generator.cpp
     # Add more test files as they are created
     # unit/test_audio_capture.cpp
