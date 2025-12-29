@@ -1,0 +1,30 @@
+# Include the license and readme
+include LICENSE
+include README.md
+include pyproject.toml
+include setup.py
+include CMakeLists.txt
+
+# Include all C++ source and header files
+recursive-include src *.cpp *.h *.hpp
+recursive-include include *.h *.hpp
+
+# Include CMake modules
+recursive-include cmake *.cmake
+
+# Include Python bindings source
+recursive-include python *.cpp *.py
+
+# Include third-party dependencies that are bundled
+recursive-include third_party *.cpp *.c *.h *.hpp *.cmake CMakeLists.txt
+
+# Exclude build artifacts
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude *.so
+global-exclude *.dylib
+global-exclude .DS_Store
+prune build
+prune dist
+prune *.egg-info
