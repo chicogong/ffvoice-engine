@@ -118,16 +118,33 @@ ffvoice-engine 是一个**轻量级、高性能的音频处理引擎**，专注�
 - **RNNoise** (可选，自动下载，用于深度学习降噪)
 - **WebRTC APM** (可选，需手动安装，参见下方说明)
 
-macOS 安装：
+**macOS 安装**：
 ```bash
 brew install cmake ffmpeg portaudio flac
 ```
 
-Linux (Ubuntu/Debian) 安装：
+**Linux (Ubuntu/Debian) 安装**：
 ```bash
 sudo apt-get install cmake build-essential \
   libavcodec-dev libavformat-dev libavutil-dev libswresample-dev \
   portaudio19-dev libflac-dev
+```
+
+**Windows 安装**：
+```powershell
+# 使用 vcpkg 管理 C++ 依赖
+# 1. 克隆 vcpkg（如果还没有）
+git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+C:\vcpkg\bootstrap-vcpkg.bat
+
+# 2. 安装依赖包
+C:\vcpkg\vcpkg install ffmpeg:x64-windows portaudio:x64-windows libflac:x64-windows
+
+# 3. 设置环境变量（用于 CMake）
+set CMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+
+# 注意：Windows 用户也可以直接使用 PyPI 的预编译 wheels（推荐）
+# pip install ffvoice
 ```
 
 #### WebRTC APM 安装（可选）
@@ -160,10 +177,20 @@ sudo meson install -C build
 ### 编译
 
 **标准编译** (不含 WebRTC APM):
+
+*Linux/macOS*:
 ```bash
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
+```
+
+*Windows*:
+```powershell
+mkdir build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+cmake --build . --config Release
 ```
 
 **启用 WebRTC APM** (需先安装库):
@@ -174,6 +201,8 @@ make -j$(nproc)
 ```
 
 **启用 RNNoise 降噪** (推荐，自动下载):
+
+*Linux/macOS*:
 ```bash
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_RNNOISE=ON
@@ -181,7 +210,15 @@ make -j$(nproc)
 # RNNoise 库会通过 CMake FetchContent 自动下载和编译
 ```
 
+*Windows*:
+```powershell
+# 注意：Windows 版本禁用 RNNoise（MSVC 不支持 VLA）
+# 使用其他音频处理选项替代
+```
+
 **启用 Whisper 语音识别** (推荐，自动下载):
+
+*Linux/macOS*:
 ```bash
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_WHISPER=ON
@@ -189,7 +226,15 @@ make -j$(nproc)
 # whisper.cpp 和 tiny 模型（39MB）会自动下载
 ```
 
-**启用所有可选功能**:
+*Windows*:
+```powershell
+mkdir build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_WHISPER=ON -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+cmake --build . --config Release
+```
+
+**启用所有可选功能** (Linux/macOS):
 ```bash
 cmake .. -DCMAKE_BUILD_TYPE=Release \
   -DENABLE_RNNOISE=ON \
@@ -199,6 +244,10 @@ make -j$(nproc)
 ```
 
 ### 使用
+
+> **注意**:
+> - **Linux/macOS**: 使用 `./build/ffvoice`
+> - **Windows**: 使用 `.\build\Release\ffvoice.exe`
 
 ```bash
 # 查看帮助
@@ -234,13 +283,13 @@ make -j$(nproc)
 # 组合：FLAC + 音频处理
 ./build/ffvoice --record -o studio.flac --normalize --highpass 80 -t 30
 
-# RNNoise 深度学习降噪（推荐用于语音录制）
+# RNNoise 深度学习降噪（推荐用于语音录制，仅 Linux/macOS）
 ./build/ffvoice --record -o clean.wav --rnnoise -t 10
 
-# 完整处理链（高通 + RNNoise + 归一化）
+# 完整处理链（高通 + RNNoise + 归一化，仅 Linux/macOS）
 ./build/ffvoice --record -o studio.flac --highpass 80 --rnnoise --normalize -t 30
 
-# RNNoise + VAD (实验性)
+# RNNoise + VAD (实验性，仅 Linux/macOS)
 ./build/ffvoice --record -o vad.wav --rnnoise-vad -t 20
 
 # 播放录音
@@ -301,10 +350,14 @@ pip install .
 | **🍎 Apple Silicon (M1/M2/M3)** | ✅ ARM64 | `pip install ffvoice` | ✅ 原生支持 |
 | **🍎 Intel Mac** | ❌ 不兼容 | 从源码编译 | ⚠️ 需手动构建 |
 | **🐧 Linux x86_64** | ✅ x86_64 | `pip install ffvoice` | ✅ 原生支持 |
-| **🪟 Windows** | ⏳ 计划中 | 从源码编译 | 🚧 开发中 |
+| **🪟 Windows x86_64** | ✅ x86_64 | `pip install ffvoice` | ✅ 原生支持 |
 
 **重要说明**:
 - **Apple Silicon 用户**: 直接使用 `pip install ffvoice` 即可，性能最佳
+- **Windows 用户**: 现已支持 Windows x86_64 预编译 wheels，直接使用 `pip install ffvoice` 即可
+  - 支持 Python 3.9-3.12
+  - 自动包含所有必需的依赖（无需手动安装 FFmpeg 等）
+  - **注意**: Windows 版本禁用了 RNNoise 降噪（MSVC 不支持 VLA），其他功能完全可用
 - **Intel Mac 用户**: PyPI wheel 不兼容，需要从源码编译:
   ```bash
   # 确保已安装依赖
