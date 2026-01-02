@@ -28,17 +28,17 @@ bool FlacWriter::Open(const std::string& filename, int sample_rate, int channels
 
     // Validate parameters
     if (channels < 1 || channels > 2) {
-        log_error("FLAC: Invalid channel count: " + std::to_string(channels));
+        LOG_ERROR("FLAC: Invalid channel count: %d", channels);
         return false;
     }
 
     if (bits_per_sample != 16 && bits_per_sample != 24) {
-        log_error("FLAC: Unsupported bits per sample: " + std::to_string(bits_per_sample));
+        LOG_ERROR("FLAC: Unsupported bits per sample: %d", bits_per_sample);
         return false;
     }
 
     if (compression_level < 0 || compression_level > 8) {
-        log_error("FLAC: Invalid compression level: " + std::to_string(compression_level));
+        LOG_ERROR("FLAC: Invalid compression level: %d", compression_level);
         return false;
     }
 
@@ -71,16 +71,15 @@ bool FlacWriter::Open(const std::string& filename, int sample_rate, int channels
         FLAC__stream_encoder_init_file(encoder_, filename.c_str(), nullptr, nullptr);
 
     if (init_status != FLAC__STREAM_ENCODER_INIT_STATUS_OK) {
-        log_error("FLAC: Encoder init failed: " +
-                  std::string(FLAC__StreamEncoderInitStatusString[init_status]));
+        LOG_ERROR("FLAC: Encoder init failed: %s",
+                  FLAC__StreamEncoderInitStatusString[init_status]);
         FLAC__stream_encoder_delete(encoder_);
         encoder_ = nullptr;
         return false;
     }
 
-    log_info("FLAC encoder opened: " + filename + " (" + std::to_string(sample_rate) + "Hz, " +
-             std::to_string(channels) + "ch, " + std::to_string(bits_per_sample) +
-             "-bit, level=" + std::to_string(compression_level) + ")");
+    LOG_INFO("FLAC encoder opened: %s (%dHz, %dch, %d-bit, level=%d)",
+             filename.c_str(), sample_rate, channels, bits_per_sample, compression_level);
 
     return true;
 }
@@ -110,7 +109,7 @@ size_t FlacWriter::WriteSamples(const int16_t* samples, size_t num_samples) {
 
     if (!success) {
         FLAC__StreamEncoderState state = FLAC__stream_encoder_get_state(encoder_);
-        log_error("FLAC: Write failed: " + std::string(FLAC__StreamEncoderStateString[state]));
+        LOG_ERROR("FLAC: Write failed: %s", FLAC__StreamEncoderStateString[state]);
         return 0;
     }
 
@@ -141,9 +140,8 @@ void FlacWriter::Close() {
         file.close();
     }
 
-    log_info("FLAC encoder closed: " + filename_ + " (" + std::to_string(total_samples_) +
-             " samples, " + std::to_string(bytes_written_) + " bytes, " +
-             "ratio=" + std::to_string(GetCompressionRatio()) + "x)");
+    LOG_INFO("FLAC encoder closed: %s (%zu samples, %zu bytes, ratio=%.2fx)",
+             filename_.c_str(), total_samples_, bytes_written_, GetCompressionRatio());
 }
 
 double FlacWriter::GetCompressionRatio() const {
