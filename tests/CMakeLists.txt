@@ -42,6 +42,7 @@ set(TEST_SOURCES
     unit/test_audio_converter.cpp
     unit/test_vad_segmenter.cpp
     unit/test_rnnoise_processor.cpp
+    unit/test_whisper_processor.cpp
     unit/test_logger.cpp
     # Add more test files as they are created
     # unit/test_audio_capture.cpp
