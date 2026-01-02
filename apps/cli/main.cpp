@@ -691,8 +691,17 @@ int main(int argc, char* argv[]) {
         );
     }
 
-    std::cout << "ffvoice-engine - Audio recording starting...\n";
-    std::cout << "TODO: Implement audio capture and recording\n";
+    // No recognized command - show help
+    std::cerr << "Error: Unknown command or missing arguments\n";
+    std::cerr << "Usage: " << argv[0] << " <command> [OPTIONS]\n\n";
+    std::cerr << "Commands:\n";
+    std::cerr << "  --list-devices         List available audio devices\n";
+    std::cerr << "  --test-wav FILE        Generate test WAV file\n";
+    std::cerr << "  --record               Record audio\n";
+#ifdef ENABLE_WHISPER
+    std::cerr << "  --transcribe FILE      Transcribe audio file\n";
+#endif
+    std::cerr << "\nUse --help for detailed usage information\n";
 
-    return 0;
+    return 1;
 }
