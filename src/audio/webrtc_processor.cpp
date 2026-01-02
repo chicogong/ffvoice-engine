@@ -49,8 +49,10 @@ bool WebRTCProcessor::Initialize(int sample_rate, int channels) {
     LOG_INFO("  AGC: %s", config_.enable_agc ? "ON" : "OFF");
     LOG_INFO("  VAD: %s", config_.enable_vad ? "ON" : "OFF");
 
-    // TODO: Initialize WebRTC APM instance (Phase 3)
-    log_info("WebRTCProcessor: Full APM implementation pending (Phase 3)");
+    // NOTE: WebRTC APM integration is not yet implemented.
+    // This processor currently operates in passthrough mode.
+    // Contributions welcome: see CONTRIBUTING.md
+    LOG_WARNING("WebRTCProcessor: APM integration not implemented, running in passthrough mode");
 #else
     log_info("WebRTCProcessor initialized in PASSTHROUGH mode (WebRTC APM not enabled)");
     log_info("  Rebuild with -DENABLE_WEBRTC_APM=ON for full functionality");
@@ -61,13 +63,14 @@ bool WebRTCProcessor::Initialize(int sample_rate, int channels) {
 
 void WebRTCProcessor::ProcessFrame(int16_t* frame, size_t frame_size) {
 #ifdef ENABLE_WEBRTC_APM
-    // TODO: Implement WebRTC APM processing (Phase 3)
+    // WebRTC APM integration not yet implemented.
+    // When implemented, this should:
     // - Convert int16_t* to webrtc::AudioFrame
     // - Call apm_->ProcessStream()
     // - Extract VAD result if enabled
     // - Convert back to int16_t*
-
-    // For now, pass through
+    (void)frame;
+    (void)frame_size;
     has_voice_ = false;
 #else
     // Pass through mode
@@ -119,8 +122,8 @@ void WebRTCProcessor::Reset() {
     has_voice_ = false;
 
 #ifdef ENABLE_WEBRTC_APM
-    // TODO: Reset WebRTC APM state (Phase 3)
-    log_info("WebRTCProcessor: State reset");
+    // WebRTC APM state reset not yet implemented (no state to reset in passthrough mode)
+    LOG_INFO("WebRTCProcessor: State reset");
 #endif
 }
 
