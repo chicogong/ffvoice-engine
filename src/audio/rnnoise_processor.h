@@ -108,6 +108,9 @@ private:
     size_t rebuffer_pos_ = 0;      ///< Current position in rebuffer
     size_t frame_size_ = 0;        ///< 480 samples @48kHz (10ms)
 
+    // Channel processing buffer (reused to avoid allocations)
+    std::vector<float> channel_buffer_;  ///< Temporary buffer for deinterleaving
+
     // VAD state
     float last_vad_prob_ = 0.0f;  ///< Last VAD probability (0.0-1.0)
 };

@@ -37,8 +37,8 @@ bool RNNoiseProcessor::Initialize(int sample_rate, int channels) {
 #ifdef ENABLE_RNNOISE
     // RNNoise supports 48kHz, 44.1kHz, 24kHz
     if (sample_rate != 48000 && sample_rate != 44100 && sample_rate != 24000) {
-        log_error("RNNoise: Unsupported sample rate " + std::to_string(sample_rate) +
-                  " Hz. Supported: 48000, 44100, 24000 Hz");
+        LOG_ERROR("RNNoise: Unsupported sample rate %d Hz. Supported: 48000, 44100, 24000 Hz",
+                  sample_rate);
         return false;
     }
 
@@ -49,29 +49,32 @@ bool RNNoiseProcessor::Initialize(int sample_rate, int channels) {
     rebuffer_.resize(frame_size_ * channels_, 0.0f);
     rebuffer_pos_ = 0;
 
+    // Pre-allocate channel buffer to avoid allocations in ProcessFrame
+    channel_buffer_.resize(frame_size_);
+
     // Create RNNoise state for each channel
     states_.resize(channels_);
     for (int ch = 0; ch < channels_; ++ch) {
         states_[ch] = rnnoise_create(nullptr);
         if (!states_[ch]) {
-            log_error("RNNoise: Failed to create DenoiseState for channel " + std::to_string(ch));
+            LOG_ERROR("RNNoise: Failed to create DenoiseState for channel %d", ch);
             return false;
         }
     }
 
-    log_info("RNNoiseProcessor initialized:");
-    log_info("  Sample rate: " + std::to_string(sample_rate) + " Hz");
-    log_info("  Channels: " + std::to_string(channels));
-    log_info("  Frame size: " + std::to_string(frame_size_) + " samples");
+    LOG_INFO("RNNoiseProcessor initialized:");
+    LOG_INFO("  Sample rate: %d Hz", sample_rate);
+    LOG_INFO("  Channels: %d", channels);
+    LOG_INFO("  Frame size: %zu samples", frame_size_);
     if (config_.enable_vad) {
-        log_info("  VAD: enabled (experimental)");
+        LOG_INFO("  VAD: enabled (experimental)");
     }
 #else
     // Passthrough mode when RNNoise is not enabled
-    log_info("RNNoiseProcessor initialized in PASSTHROUGH mode");
-    log_info("  (Rebuild with -DENABLE_RNNOISE=ON for actual noise suppression)");
-    log_info("  Sample rate: " + std::to_string(sample_rate) + " Hz");
-    log_info("  Channels: " + std::to_string(channels));
+    LOG_INFO("RNNoiseProcessor initialized in PASSTHROUGH mode");
+    LOG_INFO("  (Rebuild with -DENABLE_RNNOISE=ON for actual noise suppression)");
+    LOG_INFO("  Sample rate: %d Hz", sample_rate);
+    LOG_INFO("  Channels: %d", channels);
 #endif
 
     return true;
@@ -143,20 +146,19 @@ void RNNoiseProcessor::ProcessFrame(float* frame, size_t frame_size) {
     // Process each channel independently
     float total_vad_prob = 0.0f;
     for (int ch = 0; ch < channels_; ++ch) {
-        // Extract channel data (deinterleave)
-        std::vector<float> channel_data(frame_size);
+        // Extract channel data (deinterleave) - reuse pre-allocated buffer
         for (size_t i = 0; i < frame_size; ++i) {
-            channel_data[i] = frame[i * channels_ + ch];
+            channel_buffer_[i] = frame[i * channels_ + ch];
         }
 
         // Apply RNNoise denoising (in-place)
         // rnnoise_process_frame returns VAD probability (0.0-1.0)
-        float vad_prob = rnnoise_process_frame(states_[ch], channel_data.data(), channel_data.data());
+        float vad_prob = rnnoise_process_frame(states_[ch], channel_buffer_.data(), channel_buffer_.data());
         total_vad_prob += vad_prob;
 
         // Write back to interleaved buffer
         for (size_t i = 0; i < frame_size; ++i) {
-            frame[i * channels_ + ch] = channel_data[i];
+            frame[i * channels_ + ch] = channel_buffer_[i];
         }
     }
 
