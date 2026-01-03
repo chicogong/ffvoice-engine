@@ -13,8 +13,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.9', '3.10', '3.11', '3.12']
+        exclude:
+          # Reduce Windows matrix to save CI time
+          - os: windows-latest
+            python-version: '3.9'
+          - os: windows-latest
+            python-version: '3.10'
 
     steps:
     - name: Checkout code
@@ -36,20 +42,45 @@ jobs:
       run: |
         brew install ffmpeg portaudio flac cmake ninja
 
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        choco install cmake ninja -y
+        # Use vcpkg for dependencies
+        vcpkg install ffmpeg[core]:x64-windows portaudio:x64-windows flac:x64-windows
+        echo "VCPKG_ROOT=C:\vcpkg" >> $GITHUB_ENV
+      shell: bash
+
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install build pytest numpy
 
-    - name: Build C++ library
+    - name: Build C++ library (Unix)
+      if: runner.os != 'Windows'
       run: |
         mkdir -p build && cd build
         cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_PYTHON=OFF -DENABLE_RNNOISE=ON -DENABLE_WHISPER=ON -GNinja
         ninja
 
-    - name: Run C++ tests
+    - name: Build C++ library (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        mkdir build && cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_PYTHON=OFF -DENABLE_RNNOISE=OFF -DENABLE_WHISPER=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -GNinja
+        ninja
+      shell: bash
+
+    - name: Run C++ tests (Unix)
+      if: runner.os != 'Windows'
       run: |
         cd build && ./tests/ffvoice_tests --gtest_brief=1
+
+    - name: Run C++ tests (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        cd build && ./tests/ffvoice_tests.exe --gtest_brief=1
+      shell: bash
 
     - name: Build Python package
       run: pip install -e .
@@ -62,12 +93,98 @@ jobs:
       run: |
         pytest python/tests -v || echo "Tests completed"
 
+  code-coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libavcodec-dev libavformat-dev libavutil-dev libswresample-dev portaudio19-dev libflac-dev cmake ninja-build lcov
+
+    - name: Build with coverage
+      run: |
+        mkdir -p build && cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DBUILD_PYTHON=OFF -DENABLE_RNNOISE=ON -DENABLE_WHISPER=ON -GNinja
+        ninja
+
+    - name: Run tests
+      run: |
+        cd build && ./tests/ffvoice_tests
+
+    - name: Generate coverage report
+      run: |
+        cd build
+        lcov --capture --directory . --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' '*/tests/*' '*/googletest/*' '*/build/_deps/*' --output-file coverage.info
+        lcov --list coverage.info
+
+    - name: Upload to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./build/coverage.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        verbose: true
+
+  sanitizers:
+    name: Sanitizers (ASan + UBSan)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libavcodec-dev libavformat-dev libavutil-dev libswresample-dev portaudio19-dev libflac-dev cmake ninja-build clang
+
+    - name: Build with sanitizers
+      run: |
+        mkdir -p build && cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DBUILD_TESTS=ON \
+          -DBUILD_PYTHON=OFF \
+          -DENABLE_RNNOISE=ON \
+          -DENABLE_WHISPER=ON \
+          -DCMAKE_C_COMPILER=clang \
+          -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g" \
+          -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g" \
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined" \
+          -GNinja
+        ninja
+
+    - name: Run tests with sanitizers
+      run: |
+        cd build
+        export ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1:strict_init_order=1
+        export UBSAN_OPTIONS=print_stacktrace=1
+        ./tests/ffvoice_tests --gtest_brief=1
+
   build-wheels:
     name: Build wheels
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
     - name: Checkout code
@@ -88,6 +205,14 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         brew install ffmpeg portaudio flac cmake
+
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        choco install cmake -y
+        vcpkg install ffmpeg[core]:x64-windows portaudio:x64-windows flac:x64-windows
+        echo "VCPKG_ROOT=C:\vcpkg" >> $GITHUB_ENV
+      shell: bash
 
     - name: Build wheel
       run: |
