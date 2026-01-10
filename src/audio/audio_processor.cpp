@@ -42,9 +42,8 @@ bool VolumeNormalizer::Initialize(int sample_rate, int channels) {
 
     current_gain_ = 1.0f;
 
-    log_info("VolumeNormalizer initialized: target=" + std::to_string(target_level_) +
-             ", attack=" + std::to_string(attack_time_) + "s" +
-             ", release=" + std::to_string(release_time_) + "s");
+    LOG_INFO("VolumeNormalizer initialized: target=%.2f, attack=%.2fs, release=%.2fs",
+             target_level_, attack_time_, release_time_);
 
     return true;
 }
@@ -114,7 +113,7 @@ bool HighPassFilter::Initialize(int sample_rate, int channels) {
     prev_input_.resize(channels, 0.0f);
     prev_output_.resize(channels, 0.0f);
 
-    log_info("HighPassFilter initialized: cutoff=" + std::to_string(cutoff_freq_) + "Hz");
+    LOG_INFO("HighPassFilter initialized: cutoff=%.1fHz", cutoff_freq_);
 
     return true;
 }
@@ -161,7 +160,7 @@ void HighPassFilter::Reset() {
 
 void AudioProcessorChain::AddProcessor(std::unique_ptr<AudioProcessor> processor) {
     if (processor) {
-        log_info("Adding processor to chain: " + processor->GetName());
+        LOG_INFO("Adding processor to chain: %s", processor->GetName().c_str());
         processors_.push_back(std::move(processor));
     }
 }
@@ -173,13 +172,12 @@ bool AudioProcessorChain::Initialize(int sample_rate, int channels) {
     // Initialize all processors in chain
     for (auto& processor : processors_) {
         if (!processor->Initialize(sample_rate, channels)) {
-            log_error("Failed to initialize processor: " + processor->GetName());
+            LOG_ERROR("Failed to initialize processor: %s", processor->GetName().c_str());
             return false;
         }
     }
 
-    log_info("AudioProcessorChain initialized with " + std::to_string(processors_.size()) +
-             " processors");
+    LOG_INFO("AudioProcessorChain initialized with %zu processors", processors_.size());
 
     return true;
 }

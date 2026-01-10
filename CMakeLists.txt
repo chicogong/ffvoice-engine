@@ -16,6 +16,7 @@ endif()
 
 # Build options
 option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_BENCHMARKS "Build performance benchmarks" OFF)
 option(BUILD_EXAMPLES "Build examples" ON)
 option(BUILD_PYTHON "Build Python bindings" OFF)
 option(ENABLE_WEBRTC_APM "Enable WebRTC Audio Processing Module" OFF)
@@ -399,6 +400,35 @@ target_link_libraries(ffvoice PRIVATE ffvoice-core)
 if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+# Benchmarks
+if(BUILD_BENCHMARKS)
+    message(STATUS "Benchmarks: Enabled")
+
+    # Fetch Google Benchmark
+    include(FetchContent)
+
+    message(STATUS "Fetching Google Benchmark from GitHub...")
+
+    FetchContent_Declare(
+        benchmark
+        GIT_REPOSITORY https://github.com/google/benchmark.git
+        GIT_TAG v1.8.3
+        GIT_SHALLOW TRUE
+    )
+
+    set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+    set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+    set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
+
+    FetchContent_MakeAvailable(benchmark)
+
+    message(STATUS "Google Benchmark fetched successfully")
+
+    add_subdirectory(benchmarks)
+else()
+    message(STATUS "Benchmarks: Disabled (use -DBUILD_BENCHMARKS=ON to enable)")
 endif()
 
 # Examples
