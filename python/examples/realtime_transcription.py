@@ -61,10 +61,10 @@ def main():
     print("\nAvailable audio devices:")
     ffvoice.AudioCapture.list_devices()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Ready for real-time transcription!")
     print("Press Ctrl+C to stop...")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # Start recording
     if not capture.start_recording():
@@ -83,9 +83,11 @@ def main():
 
                 # Get VAD statistics
                 avg_vad_prob, speech_ratio = vad.get_statistics()
-                print(f"  VAD stats: avg_prob={avg_vad_prob:.2f}, "
-                      f"speech_ratio={speech_ratio:.2%}, "
-                      f"threshold={vad.get_current_threshold():.2f}")
+                print(
+                    f"  VAD stats: avg_prob={avg_vad_prob:.2f}, "
+                    f"speech_ratio={speech_ratio:.2%}, "
+                    f"threshold={vad.get_current_threshold():.2f}"
+                )
 
                 # In a real implementation, you would:
                 # 1. Get the audio segment from VAD

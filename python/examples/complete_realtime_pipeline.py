@@ -81,8 +81,8 @@ class RealtimeTranscriber:
 
         # Get VAD statistics
         stats = self.vad.get_statistics()
-        avg_vad = stats['avg_vad_prob']
-        speech_ratio = stats['speech_ratio']
+        avg_vad = stats["avg_vad_prob"]
+        speech_ratio = stats["speech_ratio"]
 
         print(f"\n[Segment {self.total_segments}] {len(segment_array)} samples")
         print(f"  VAD: {avg_vad:.2f}, Speech ratio: {speech_ratio:.1%}")
@@ -97,8 +97,10 @@ class RealtimeTranscriber:
 
             if segments:
                 for seg in segments:
-                    print(f"\n  → \"{seg.text}\"")
-                    print(f"    [{seg.start_ms}ms - {seg.end_ms}ms, confidence: {seg.confidence:.2f}]")
+                    print(f'\n  → "{seg.text}"')
+                    print(
+                        f"    [{seg.start_ms}ms - {seg.end_ms}ms, confidence: {seg.confidence:.2f}]"
+                    )
                 print(f"    Inference: {inference_time}ms")
             else:
                 print("(no speech detected)")
@@ -124,9 +126,13 @@ class RealtimeTranscriber:
         if self.total_frames % 100 == 0:
             elapsed = time.time() - self.start_time
             is_speech = "🎤 SPEECH" if self.vad.is_in_speech() else "🔇 silence"
-            print(f"\rFrames: {self.total_frames}, VAD: {vad_prob:.2f}, {is_speech}, "
-                  f"Buffer: {self.vad.get_buffer_size()} samples, "
-                  f"Time: {elapsed:.1f}s", end="", flush=True)
+            print(
+                f"\rFrames: {self.total_frames}, VAD: {vad_prob:.2f}, {is_speech}, "
+                f"Buffer: {self.vad.get_buffer_size()} samples, "
+                f"Time: {elapsed:.1f}s",
+                end="",
+                flush=True,
+            )
 
     def start(self, device_index=-1):
         """Start real-time transcription"""
@@ -135,7 +141,7 @@ class RealtimeTranscriber:
             sample_rate=self.sample_rate,
             channels=self.channels,
             frames_per_buffer=self.frames_per_buffer,
-            device_index=device_index
+            device_index=device_index,
         )
 
         print(f"✓ Device opened: {self.sample_rate}Hz, {self.channels} channel(s)")
@@ -177,9 +183,9 @@ class RealtimeTranscriber:
 
 def main():
     """Main entry point"""
-    print("="*60)
+    print("=" * 60)
     print("ffvoice Real-time Speech Recognition")
-    print("="*60)
+    print("=" * 60)
 
     # Parse command line arguments
     device_index = -1  # Use default device
