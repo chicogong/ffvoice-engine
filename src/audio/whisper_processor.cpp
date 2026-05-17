@@ -7,6 +7,7 @@
 
 #include "utils/audio_converter.h"
 #include "utils/logger.h"
+#include "utils/word_grouper.h"
 
 #ifdef ENABLE_WHISPER
     #include "whisper.h"
@@ -199,7 +200,8 @@ bool WhisperProcessor::TranscribeBuffer(const int16_t* samples, size_t num_sampl
 
         last_inference_time_ms_ = total_ms;
 
-        double audio_duration_s = static_cast<double>(num_samples) / 48000.0;
+        double audio_duration_s =
+            static_cast<double>(num_samples) / static_cast<double>(config_.input_sample_rate);
         double realtime_factor = audio_duration_s * 1000.0 / total_ms;
 
         LOG_INFO("Performance: total=%.1fms (convert=%.1fms, inference=%.1fms, extract=%.1fms), "
@@ -264,21 +266,22 @@ bool WhisperProcessor::LoadAudioFile(const std::string& filename, std::vector<fl
 bool WhisperProcessor::ConvertBufferToFloat(const int16_t* samples, size_t num_samples,
                                             std::vector<float>& pcm_data) {
     // Real-time mode implementation (Milestone 4)
-    // Currently assumes: 48kHz sample rate, mono channel
+    // Input sample rate is configurable via WhisperConfig::input_sample_rate (mono channel).
     // This assumption matches the standard recording configuration for real-time transcription
 
-    // Convert int16_t 48kHz mono -> float 16kHz mono for Whisper
+    // Convert int16_t input-rate mono -> float 16kHz mono for Whisper
     // Reuse conversion_buffer_ to avoid repeated allocations
     if (conversion_buffer_.size() < num_samples) {
         conversion_buffer_.resize(num_samples);
     }
     AudioConverter::Int16ToFloat(samples, num_samples, conversion_buffer_.data());
 
-    // Resample 48kHz -> 16kHz
-    size_t output_size = static_cast<size_t>(num_samples * (16000.0 / 48000.0));
+    // Resample input rate -> 16kHz (Whisper's required target rate)
+    const double input_rate = static_cast<double>(config_.input_sample_rate);
+    size_t output_size = static_cast<size_t>(num_samples * (16000.0 / input_rate));
     pcm_data.resize(output_size);
-    AudioConverter::Resample(conversion_buffer_.data(), num_samples, 48000, pcm_data.data(),
-                             output_size, 16000);
+    AudioConverter::Resample(conversion_buffer_.data(), num_samples, config_.input_sample_rate,
+                             pcm_data.data(), output_size, 16000);
 
     return true;
 }
@@ -304,6 +307,37 @@ void WhisperProcessor::ExtractSegments(std::vector<TranscriptionSegment>& segmen
 
         // Create segment
         TranscriptionSegment segment(t0, t1, text);
+
+        // Optionally extract per-word timestamps from the segment's tokens
+        if (config_.word_timestamps) {
+            // Whisper emits BPE sub-word tokens; collect the real (non-special)
+            // ones and group them into whole words.
+            const int n_tokens = whisper_full_n_tokens(ctx_, i);
+
+            std::vector<WordToken> tokens;
+            tokens.reserve(static_cast<size_t>(n_tokens > 0 ? n_tokens : 0));
+
+            for (int j = 0; j < n_tokens; ++j) {
+                const whisper_token_data token_data = whisper_full_get_token_data(ctx_, i, j);
+
+                // Skip special tokens (timestamp/marker tokens, not real text)
+                if (token_data.id >= whisper_token_eot(ctx_)) {
+                    continue;
+                }
+
+                // Skip tokens with no text
+                const char* token_text = whisper_full_get_token_text(ctx_, i, j);
+                if (!token_text || std::strlen(token_text) == 0) {
+                    continue;
+                }
+
+                // Token timestamps are in centiseconds -> convert to milliseconds
+                tokens.push_back(WordToken{token_text, token_data.t0 * 10, token_data.t1 * 10,
+                                           token_data.p});
+            }
+
+            segment.words = GroupTokensIntoWords(tokens);
+        }
 
         // Add to results
         segments.push_back(segment);

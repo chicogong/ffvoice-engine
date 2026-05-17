@@ -133,6 +133,7 @@ set(FFVOICE_CORE_SOURCES
     src/utils/logger.cpp
     src/utils/ring_buffer.cpp
     src/utils/signal_generator.cpp
+    src/utils/word_grouper.cpp
 )
 
 # WebRTC APM (conditional)

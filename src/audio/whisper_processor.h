@@ -23,13 +23,33 @@ struct whisper_full_params;
 namespace ffvoice {
 
 /**
+ * @brief A single transcribed word with its own timestamps
+ *
+ * Populated per segment when WhisperConfig::word_timestamps is enabled.
+ */
+struct Word {
+    int64_t start_ms;   ///< Word start time in milliseconds
+    int64_t end_ms;     ///< Word end time in milliseconds
+    std::string text;   ///< Word text (keeps Whisper's leading space, if any)
+    float probability;  ///< Mean token probability for this word (0.0-1.0)
+
+    Word() : start_ms(0), end_ms(0), probability(0.0f) {
+    }
+
+    Word(int64_t start, int64_t end, const std::string& txt, float prob)
+        : start_ms(start), end_ms(end), text(txt), probability(prob) {
+    }
+};
+
+/**
  * @brief Transcription segment with timestamp and text
  */
 struct TranscriptionSegment {
-    int64_t start_ms;  ///< Start time in milliseconds
-    int64_t end_ms;    ///< End time in milliseconds
-    std::string text;  ///< Transcribed text content
-    float confidence;  ///< Confidence score (0.0-1.0)
+    int64_t start_ms;         ///< Start time in milliseconds
+    int64_t end_ms;           ///< End time in milliseconds
+    std::string text;         ///< Transcribed text content
+    float confidence;         ///< Confidence score (0.0-1.0)
+    std::vector<Word> words;  ///< Per-word timestamps (empty unless word_timestamps enabled)
 
     TranscriptionSegment() : start_ms(0), end_ms(0), confidence(0.0f) {
     }
@@ -66,6 +86,8 @@ struct WhisperConfig {
     bool print_progress = true;                   ///< Print progress during processing
     bool print_timestamps = false;                ///< Print timestamps with text
     bool enable_performance_metrics = false;      ///< Enable performance timing metrics
+    bool word_timestamps = false;                 ///< Populate per-word timestamps in each segment
+    int input_sample_rate = 48000;                ///< Sample rate (Hz) of TranscribeBuffer() input
 };
 
 /**

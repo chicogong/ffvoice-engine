@@ -99,7 +99,7 @@ void print_usage(const char* program_name) {
 #ifdef ENABLE_WHISPER
     std::cout << "\n  Whisper ASR (Speech Recognition):\n";
     std::cout << "    --transcribe FILE     Transcribe audio file (offline mode)\n";
-    std::cout << "    --format FMT          Subtitle format: txt, srt, vtt (default: txt)\n";
+    std::cout << "    --format FMT          Subtitle format: txt, srt, vtt, json (default: txt)\n";
     std::cout << "    --language LANG       Language: auto, zh, en, etc. (default: auto)\n";
     std::cout << "    --transcribe-live     Enable real-time transcription during recording\n";
     std::cout << "                          (requires --rnnoise-vad for VAD-based segmentation)\n";
@@ -122,6 +122,8 @@ void print_usage(const char* program_name) {
     std::cout << "  " << program_name << " --transcribe speech.wav -o transcript.txt\n";
     std::cout << "  " << program_name << " --transcribe speech.wav --format srt -o subtitles.srt\n";
     std::cout << "  " << program_name << " --transcribe speech.flac --format vtt --language zh\n";
+    std::cout << "  " << program_name
+              << " --transcribe speech.wav --format json -o transcript.json\n";
     std::cout << "  " << program_name
               << " --record -o speech.wav --rnnoise-vad --transcribe-live -t 60\n";
 #endif
@@ -200,10 +202,27 @@ int transcribe_file(const std::string& audio_file, const std::string& output_fil
     std::cout << "  Format: " << format_str << "\n";
     std::cout << "  Language: " << language << "\n\n";
 
+    // Determine output format (resolved before constructing the processor so the
+    // JSON format can request per-word timestamps from Whisper).
+    SubtitleGenerator::Format format;
+    if (format_str == "srt") {
+        format = SubtitleGenerator::Format::SRT;
+    } else if (format_str == "vtt") {
+        format = SubtitleGenerator::Format::VTT;
+    } else if (format_str == "json") {
+        format = SubtitleGenerator::Format::JSON;
+    } else {
+        format = SubtitleGenerator::Format::PlainText;
+    }
+
     // Initialize Whisper processor
     WhisperConfig config;
     config.language = language;
     config.print_progress = true;
+    // JSON output embeds per-word timestamps; other formats leave this at false.
+    if (format == SubtitleGenerator::Format::JSON) {
+        config.word_timestamps = true;
+    }
 
     WhisperProcessor whisper(config);
 
@@ -222,16 +241,6 @@ int transcribe_file(const std::string& audio_file, const std::string& output_fil
     }
 
     std::cout << "Transcription complete: " << segments.size() << " segments\n\n";
-
-    // Determine output format
-    SubtitleGenerator::Format format;
-    if (format_str == "srt") {
-        format = SubtitleGenerator::Format::SRT;
-    } else if (format_str == "vtt") {
-        format = SubtitleGenerator::Format::VTT;
-    } else {
-        format = SubtitleGenerator::Format::PlainText;
-    }
 
     // Generate subtitle/transcript file
     if (!SubtitleGenerator::Generate(segments, output_file, format)) {
