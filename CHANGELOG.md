@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 新增 / Added
+- **多音轨混音 / Multi-track mixing** (`src/audio/audio_mixer.h`)
+  - 新增 `AudioMixer`:将多路 int16 音轨混音为单一输出
+  - 每条音轨独立的增益、声像 (pan)、静音控制,外加全局 master 增益
+  - float 累加后钳位到 int16,多路叠加会饱和而非溢出回绕
+  - 复用 float 暂存缓冲区,避免在音频路径上重复分配内存
+  - 新增 36 个单元测试(`tests/unit/test_audio_mixer.cpp`),默认构建测试套件 160 → 196
+
 ### 计划中 / Planned
 - macOS Intel x86_64 wheels（需付费 GitHub runner）
-- 多音轨混音
+- 实时推流（SRT/RTMP）
 - GUI 客户端
 
 ---

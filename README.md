@@ -445,6 +445,7 @@ ffvoice-engine/
 ├── src/                    # 源代码
 │   ├── audio/              # 音频采集与处理模块
 │   │   ├── audio_capture_device.* # ✅ PortAudio 采集器
+│   │   ├── audio_mixer.*          # ✅ 多音轨混音器
 │   │   ├── audio_processor.*      # ✅ 音频处理框架
 │   │   ├── rnnoise_processor.*    # ✅ RNNoise 深度学习降噪 (可选)
 │   │   ├── vad_segmenter.*        # ✅ VAD 音频分段器
@@ -514,10 +515,10 @@ ffvoice-engine/
 - [x] VAD 自适应阈值（动态环境适应）
 - [x] 内存优化（缓冲区重用 + 条件扩容）
 
-### Milestone 6: 高级功能（规划中）
-- 多音轨混音
-- 实时推流（SRT/RTMP）
-- GUI 客户端（Qt）
+### Milestone 6: 高级功能（进行中）
+- [x] 多音轨混音（AudioMixer：多轨增益 / 声像 / 静音 + master 增益）
+- [ ] 实时推流（SRT/RTMP）
+- [ ] GUI 客户端（Qt）
 
 ## 📝 开发说明
 
@@ -735,7 +736,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md) to maintain a welcoming 
 - ✅ **Milestone 3**: 离线语音识别 (Whisper ASR) - 完成
 - ✅ **Milestone 4**: 实时语音识别 - 完成
 - ✅ **Milestone 5**: 性能优化与增强 - 完成
-- ⏳ **Milestone 6**: 高级功能 - 规划中
+- ⏳ **Milestone 6**: 高级功能 - 进行中（多音轨混音已完成）
 
 详见 [CHANGELOG.md](CHANGELOG.md)
 

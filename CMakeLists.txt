@@ -124,6 +124,7 @@ endif()
 # Source files
 set(FFVOICE_CORE_SOURCES
     src/audio/audio_capture_device.cpp
+    src/audio/audio_mixer.cpp
     src/audio/audio_processor.cpp
     src/audio/vad_segmenter.cpp
     src/media/audio_file_writer.cpp
