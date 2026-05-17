@@ -14,6 +14,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.1] - 2026-05-17
+
+### 🧹 健壮性与测试覆盖 / Robustness & Test Coverage
+本次补丁聚焦 CLI 健壮性、核心模块缺陷修复和单元测试扩展。默认构建的单元测试用例从 93 个增加到 160 个，全部通过。
+
+### 新增 / Added
+
+- **无锁环形缓冲区 / Lock-free RingBuffer** (`src/utils/ring_buffer.h`)
+  - 实现单生产者-单消费者 (SPSC) 无锁环形缓冲区（此前仅为空占位符）
+  - 提供 `push` / `pop` / `push_bulk` / `pop_bulk` / `clear` 等操作，支持任意容量
+  - 生产者与消费者计数器按缓存行对齐 (`alignas`)，消除伪共享
+  - 适用于实时音频路径（采集回调 → 处理线程的无锁交接）
+  - 启用了 `test_ring_buffer.cpp` 中 42 个此前无法编译的 TDD 测试用例
+
+- **AudioProcessor 单元测试** (`tests/unit/test_audio_processor.cpp`)
+  - 为 `VolumeNormalizer` / `HighPassFilter` / `AudioProcessorChain` 新增 25 个测试用例
+  - 覆盖 DC 去除、通带保留、音量归一化、处理器链、Reset 等行为
+
+- **FLAC 错误状态查询 / FLAC error query** — 新增 `FlacWriter::HasError()`，可区分“无数据”与“编码失败”
+
+### 修复 / Fixed
+
+#### 🟠 CLI 健壮性 / CLI Robustness (`apps/cli/main.cpp`)
+- **参数解析崩溃** — 此前对 `--device` / `--duration` / `--sample-rate` / `--channels` / `--compression` / `--highpass` 使用裸 `std::stoi` / `std::stof`，非法输入（如 `-t abc`）会抛出未捕获异常导致程序崩溃；现改用安全解析并输出清晰错误信息
+- **参数范围校验** — 新增对 sample-rate (8000–192000 Hz)、channels (1–2)、compression (0–8)、duration、device、highpass 频率的范围检查
+- **未知选项处理** — 未知选项/命令现在报告明确错误，替代了原先误导性的 “TODO: Implement audio capture” 占位输出
+
+#### 🟠 核心模块健壮性 / Core Robustness
+- **[audio_capture_device.cpp]** `Start()` 重开音频流时，`Pa_CloseStream` / `Pa_OpenStream` / `Pa_StartStream` 失败会泄漏流句柄或留下不一致状态；现在所有错误路径都会清理 `stream_` 句柄并干净返回
+- **[wav_writer.cpp]** RIFF/WAV 头使用 `uint32_t` 存储大小，录制超过 4GB 会静默溢出损坏文件；新增大小上限保护，达到上限时停止写入并报错
+- **[vad_segmenter.cpp]** `ProcessFrame()` 在插入缓冲区前未校验边界，畸形 `num_samples` 可能导致缓冲区无限增长；新增针对 `max_segment_samples` 的边界检查与空指针保护
+- **[flac_writer.cpp]** `WriteSamples()` 对“无数据”和“编码错误”都返回 0，调用方无法区分；新增 `has_error_` 状态跟踪
+
+#### 版本一致性 / Version Consistency
+- CMake 项目版本由 `0.1.0` 修正为 `0.6.1`；CLI 不再硬编码打印 `v0.1.0`，改为从 CMake 注入的 `FFVOICE_VERSION` 宏派生（单一数据源）
+- `pyproject.toml`、`python/ffvoice/__init__.py` 同步更新至 `0.6.1`
+
+### 变更 / Changed
+- **[test_ring_buffer.cpp]** 将 2 个依赖机器性能/调度的断言（并发-单线程加速比、push/pop 失败率）改为健壮的正确性断言（数据完整性、缓冲区耗尽、吞吐下限）。加速比与失败率受 CPU 缓存和 OS 调度影响，不适合作为单元测试的通过门槛
+- **文档 / Docs** — 修正 README 中过时的测试数量（39+ → 100+）、过时的分支名（`dev/milestone-1` → `master`）、不一致的里程碑状态；更新 `python/README.md` 的 Windows 平台支持状态为“已支持预编译 wheel”
+
+### 测试 / Tests
+- 默认构建单元测试套件：93 → **160** 个用例，全部通过
+- 新增模块覆盖：AudioProcessor (25)、RingBuffer (42)
+
+---
+
 ## [0.6.0] - 2025-12-30
 
 ### 🛡️ 稳定性提升 / Stability Improvements

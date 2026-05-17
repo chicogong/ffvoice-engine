@@ -1,6 +1,6 @@
 # ffvoice-engine - Low-latency C++ voice engine
 cmake_minimum_required(VERSION 3.20)
-project(ffvoice-engine VERSION 0.1.0 LANGUAGES CXX C)
+project(ffvoice-engine VERSION 0.6.1 LANGUAGES CXX C)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 20)
@@ -21,6 +21,9 @@ option(BUILD_PYTHON "Build Python bindings" OFF)
 option(ENABLE_WEBRTC_APM "Enable WebRTC Audio Processing Module" OFF)
 option(ENABLE_RNNOISE "Enable RNNoise deep learning noise suppression" OFF)
 option(ENABLE_WHISPER "Enable Whisper ASR (speech recognition)" OFF)
+
+# Propagate the project version to the C++ sources (single source of truth)
+add_compile_definitions(FFVOICE_VERSION="${PROJECT_VERSION}")
 
 # Compiler flags
 if(MSVC)

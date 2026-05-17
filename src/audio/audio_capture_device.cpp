@@ -185,8 +185,16 @@ bool AudioCaptureDevice::Start(AudioCallback callback) {
 
     user_callback_ = callback;
 
-    // Close and reopen with callback
-    Pa_CloseStream(stream_);
+    // Close the callback-less stream opened by Open(). The handle is invalid
+    // after this point regardless of the return code, so clear it immediately
+    // to avoid a dangling pointer / double-close if reopening fails below.
+    PaError err = Pa_CloseStream(stream_);
+    stream_ = nullptr;
+    if (err != paNoError) {
+        log_error("Failed to close stream before reopen: " +
+                  std::string(Pa_GetErrorText(err)));
+        return false;
+    }
 
     // Use the stored device ID
     PaStreamParameters input_params;
@@ -196,20 +204,25 @@ bool AudioCaptureDevice::Start(AudioCallback callback) {
     input_params.suggestedLatency = Pa_GetDeviceInfo(device_id_)->defaultLowInputLatency;
     input_params.hostApiSpecificStreamInfo = nullptr;
 
-    PaError err = Pa_OpenStream(&stream_, &input_params, nullptr, sample_rate_,
-                                256,  // frames per buffer
-                                paClipOff, PortAudioCallback,
-                                this  // User data
+    err = Pa_OpenStream(&stream_, &input_params, nullptr, sample_rate_,
+                        256,  // frames per buffer
+                        paClipOff, PortAudioCallback,
+                        this  // User data
     );
 
     if (err != paNoError) {
         log_error("Failed to reopen stream with callback: " + std::string(Pa_GetErrorText(err)));
+        stream_ = nullptr;  // No valid stream; keep device in a clean closed state
         return false;
     }
 
     err = Pa_StartStream(stream_);
     if (err != paNoError) {
         log_error("Failed to start stream: " + std::string(Pa_GetErrorText(err)));
+        // Stream was opened but could not start; close it so we do not leak
+        // the handle and leave the device half-open.
+        Pa_CloseStream(stream_);
+        stream_ = nullptr;
         return false;
     }
 

@@ -79,6 +79,7 @@ private:
     int bits_per_sample_ = 0;
     size_t total_samples_ = 0;
     std::streampos data_pos_ = 0;
+    bool size_limit_reached_ = false;  // True once the 4 GB RIFF limit is hit
 };
 
 }  // namespace ffvoice

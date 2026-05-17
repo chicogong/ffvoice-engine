@@ -1,0 +1,38 @@
+# Configuration for actions/labeler@v5 — auto-labels pull requests by the
+# paths they touch. Referenced by .github/workflows/pr.yml.
+# Docs: https://github.com/actions/labeler
+
+core:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/**'
+          - 'include/**'
+          - 'apps/**'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: 'tests/**'
+
+python:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'python/**'
+          - 'src/python/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**'
+
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/CMakeLists.txt'
+          - 'setup.py'
+          - 'pyproject.toml'
+          - 'MANIFEST.in'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'

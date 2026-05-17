@@ -5,9 +5,22 @@
 
 #include "wav_writer.h"
 
+#include "utils/logger.h"
+
+#include <cstdint>
 #include <cstring>
+#include <limits>
 
 namespace ffvoice {
+
+namespace {
+// Maximum size, in bytes, that the data chunk may reach. The RIFF container
+// stores the data chunk size and the overall RIFF size as uint32_t fields, and
+// the RIFF size is (data_size + 36). To keep both fields representable we cap
+// the data chunk at UINT32_MAX - 36.
+constexpr uint64_t kMaxWavDataBytes =
+    static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) - 36u;
+}  // namespace
 
 WavWriter::~WavWriter() {
     Close();
@@ -23,6 +36,7 @@ bool WavWriter::Open(const std::string& filename, int sample_rate, int channels,
     channels_ = channels;
     bits_per_sample_ = bits_per_sample;
     total_samples_ = 0;
+    size_limit_reached_ = false;
 
     file_.open(filename, std::ios::binary | std::ios::out);
     if (!file_) {
@@ -97,6 +111,27 @@ size_t WavWriter::WriteSamples(const int16_t* samples, size_t num_samples) {
         return 0;
     }
 
+    if (size_limit_reached_) {
+        return 0;
+    }
+
+    // Guard against uint32_t overflow of the RIFF/data chunk size fields.
+    // The data chunk size is total_samples_ * bits_per_sample_ / 8 bytes.
+    // Reject the write if accepting these samples would push it past the limit.
+    const uint64_t bytes_per_sample = static_cast<uint64_t>(bits_per_sample_) / 8u;
+    const uint64_t current_data_bytes =
+        static_cast<uint64_t>(total_samples_) * bytes_per_sample;
+    const uint64_t incoming_data_bytes =
+        static_cast<uint64_t>(num_samples) * bytes_per_sample;
+
+    if (incoming_data_bytes > kMaxWavDataBytes - current_data_bytes) {
+        size_limit_reached_ = true;
+        log_error(
+            "WavWriter: data size would exceed the 4 GB WAV/RIFF limit; "
+            "no further samples will be written (existing data is intact)");
+        return 0;
+    }
+
     size_t bytes = num_samples * sizeof(int16_t);
     file_.write(reinterpret_cast<const char*>(samples), bytes);
 
@@ -117,6 +152,7 @@ void WavWriter::Close() {
         UpdateHeader();
         file_.close();
         total_samples_ = 0;
+        size_limit_reached_ = false;
     }
 }
 
