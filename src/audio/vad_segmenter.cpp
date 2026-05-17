@@ -87,7 +87,22 @@ void VADSegmenter::ProcessFrame(const int16_t* samples, size_t num_samples, floa
 
     // Accumulate samples if in speech segment
     if (in_speech_) {
-        buffer_.insert(buffer_.end(), samples, samples + num_samples);
+        // Defensive bounds check: never let the buffer grow past
+        // max_segment_samples, even if a single frame reports an oversized or
+        // malformed num_samples. Cap the insert so an unbounded/UB insert
+        // cannot happen; the max-length termination check below then fires.
+        if (samples != nullptr && num_samples > 0 &&
+            buffer_.size() < config_.max_segment_samples) {
+            size_t room = config_.max_segment_samples - buffer_.size();
+            size_t to_insert = std::min(num_samples, room);
+            if (to_insert < num_samples) {
+                LOG_WARNING(
+                    "VADSegmenter: frame truncated (%zu of %zu samples) to "
+                    "respect max_segment_samples",
+                    to_insert, num_samples);
+            }
+            buffer_.insert(buffer_.end(), samples, samples + to_insert);
+        }
 
         // Check termination conditions
         bool max_length_reached = buffer_.size() >= config_.max_segment_samples;

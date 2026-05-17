@@ -56,6 +56,7 @@ bool FlacWriter::Open(const std::string& filename, int sample_rate, int channels
     bits_per_sample_ = bits_per_sample;
     total_samples_ = 0;
     bytes_written_ = 0;
+    has_error_ = false;
 
     // Configure encoder
     FLAC__stream_encoder_set_channels(encoder_, channels);
@@ -75,6 +76,7 @@ bool FlacWriter::Open(const std::string& filename, int sample_rate, int channels
                   std::string(FLAC__StreamEncoderInitStatusString[init_status]));
         FLAC__stream_encoder_delete(encoder_);
         encoder_ = nullptr;
+        has_error_ = true;
         return false;
     }
 
@@ -88,11 +90,18 @@ bool FlacWriter::Open(const std::string& filename, int sample_rate, int channels
 size_t FlacWriter::WriteSamples(const int16_t* samples, size_t num_samples) {
     if (!encoder_) {
         log_error("FLAC encoder not open");
+        has_error_ = true;
+        return 0;
+    }
+
+    // A previous write put the encoder in an error state; refuse further
+    // writes so the caller does not mistake a 0 return for "nothing to do".
+    if (has_error_) {
         return 0;
     }
 
     if (!samples || num_samples == 0) {
-        return 0;
+        return 0;  // Nothing to write; not an error.
     }
 
     // Convert int16_t samples to FLAC__int32 for encoding
@@ -111,6 +120,7 @@ size_t FlacWriter::WriteSamples(const int16_t* samples, size_t num_samples) {
     if (!success) {
         FLAC__StreamEncoderState state = FLAC__stream_encoder_get_state(encoder_);
         log_error("FLAC: Write failed: " + std::string(FLAC__StreamEncoderStateString[state]));
+        has_error_ = true;  // Surface the failure via HasError() for callers.
         return 0;
     }
 

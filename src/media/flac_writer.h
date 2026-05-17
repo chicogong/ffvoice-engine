@@ -67,6 +67,20 @@ public:
     }
 
     /**
+     * @brief Check whether the encoder has entered an error state
+     *
+     * WriteSamples() returns 0 both when there was nothing to write and when
+     * the FLAC encoder failed. Use this to distinguish a genuine failure: it
+     * returns true once any encoder error (open or write) has occurred and
+     * stays true until the next successful Open().
+     *
+     * @return true if a write/encoder error has occurred
+     */
+    bool HasError() const {
+        return has_error_;
+    }
+
+    /**
      * @brief Get total samples written
      */
     size_t GetTotalSamples() const {
@@ -86,6 +100,7 @@ private:
     int bits_per_sample_ = 0;
     size_t total_samples_ = 0;
     size_t bytes_written_ = 0;
+    bool has_error_ = false;  // True once an encoder/open error has occurred
 };
 
 }  // namespace ffvoice
