@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 #ifdef ENABLE_RNNOISE
@@ -30,8 +31,48 @@
 #include <csignal>
 #include <thread>
 
+// Version is injected by CMake (single source of truth); fall back for non-CMake builds.
+#ifndef FFVOICE_VERSION
+    #define FFVOICE_VERSION "0.6.1"
+#endif
+
+// Parse an integer CLI argument. On failure prints an error and returns false,
+// so the whole value (including trailing junk like "12abc") is rejected cleanly
+// instead of crashing with an uncaught std::invalid_argument/std::out_of_range.
+bool parse_int_arg(const std::string& value, const std::string& flag, int& out) {
+    try {
+        size_t pos = 0;
+        int parsed = std::stoi(value, &pos);
+        if (pos != value.size()) {
+            throw std::invalid_argument(value);
+        }
+        out = parsed;
+        return true;
+    } catch (const std::exception&) {
+        std::cerr << "Error: invalid integer for " << flag << ": '" << value << "'\n";
+        return false;
+    }
+}
+
+// Parse a floating-point CLI argument. Same contract as parse_int_arg().
+bool parse_float_arg(const std::string& value, const std::string& flag, float& out) {
+    try {
+        size_t pos = 0;
+        float parsed = std::stof(value, &pos);
+        if (pos != value.size()) {
+            throw std::invalid_argument(value);
+        }
+        out = parsed;
+        return true;
+    } catch (const std::exception&) {
+        std::cerr << "Error: invalid number for " << flag << ": '" << value << "'\n";
+        return false;
+    }
+}
+
 void print_usage(const char* program_name) {
-    std::cout << "ffvoice-engine v0.1.0 - Low-latency audio capture and recording\n\n";
+    std::cout << "ffvoice-engine v" FFVOICE_VERSION
+                 " - Low-latency audio capture and recording\n\n";
     std::cout << "Usage: " << program_name << " [OPTIONS]\n\n";
     std::cout << "Options:\n";
     std::cout << "  --help, -h              Show this help message\n";
@@ -639,10 +680,14 @@ int main(int argc, char* argv[]) {
             std::string value = argv[i + 1];
 
             if (arg == "-d" || arg == "--device") {
-                device_id = std::stoi(value);
+                if (!parse_int_arg(value, arg, device_id)) {
+                    return 1;
+                }
                 ++i;
             } else if (arg == "-t" || arg == "--duration") {
-                duration = std::stoi(value);
+                if (!parse_int_arg(value, arg, duration)) {
+                    return 1;
+                }
                 ++i;
             } else if (arg == "-o" || arg == "--output") {
                 output_file = value;
@@ -651,24 +696,68 @@ int main(int argc, char* argv[]) {
                 format = value;
                 ++i;
             } else if (arg == "--sample-rate") {
-                sample_rate = std::stoi(value);
+                if (!parse_int_arg(value, arg, sample_rate)) {
+                    return 1;
+                }
                 ++i;
             } else if (arg == "--channels") {
-                channels = std::stoi(value);
+                if (!parse_int_arg(value, arg, channels)) {
+                    return 1;
+                }
                 ++i;
             } else if (arg == "--compression") {
-                compression_level = std::stoi(value);
+                if (!parse_int_arg(value, arg, compression_level)) {
+                    return 1;
+                }
                 ++i;
             } else if (arg == "--highpass") {
+                if (!parse_float_arg(value, arg, highpass_freq)) {
+                    return 1;
+                }
                 enable_highpass = true;
-                highpass_freq = std::stof(value);
                 ++i;
+            } else {
+                std::cerr << "Error: unknown option: " << arg << "\n";
+                std::cerr << "Run '" << argv[0] << " --help' for usage.\n";
+                return 1;
             }
         }
 
         if (output_file.empty()) {
             std::cerr << "Error: Output file required\n";
             std::cerr << "Usage: " << argv[0] << " --record -o output.wav [OPTIONS]\n";
+            return 1;
+        }
+
+        // Validate numeric parameters before touching the audio device
+        if (sample_rate < 8000 || sample_rate > 192000) {
+            std::cerr << "Error: --sample-rate must be between 8000 and 192000 Hz (got "
+                      << sample_rate << ")\n";
+            return 1;
+        }
+        if (channels < 1 || channels > 2) {
+            std::cerr << "Error: --channels must be 1 (mono) or 2 (stereo) (got " << channels
+                      << ")\n";
+            return 1;
+        }
+        if (compression_level < 0 || compression_level > 8) {
+            std::cerr << "Error: --compression must be between 0 and 8 (got " << compression_level
+                      << ")\n";
+            return 1;
+        }
+        if (duration < 0) {
+            std::cerr << "Error: --duration must be >= 0 (got " << duration << ")\n";
+            return 1;
+        }
+        if (device_id < -1) {
+            std::cerr << "Error: --device must be >= 0, or -1 for the default device (got "
+                      << device_id << ")\n";
+            return 1;
+        }
+        if (enable_highpass && (highpass_freq <= 0.0f ||
+                                highpass_freq >= static_cast<float>(sample_rate) / 2.0f)) {
+            std::cerr << "Error: --highpass frequency must be > 0 and below the Nyquist limit ("
+                      << sample_rate / 2 << " Hz)\n";
             return 1;
         }
 
@@ -691,8 +780,8 @@ int main(int argc, char* argv[]) {
         );
     }
 
-    std::cout << "ffvoice-engine - Audio recording starting...\n";
-    std::cout << "TODO: Implement audio capture and recording\n";
-
-    return 0;
+    // No recognized command matched.
+    std::cerr << "Error: unknown command or option: " << arg1 << "\n\n";
+    print_usage(argv[0]);
+    return 1;
 }
