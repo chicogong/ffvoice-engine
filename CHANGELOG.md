@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 复用 float 暂存缓冲区,避免在音频路径上重复分配内存
   - 新增 36 个单元测试(`tests/unit/test_audio_mixer.cpp`),默认构建测试套件 160 → 196
 
+- **Whisper 词级时间戳 / Word-level timestamps** (`src/audio/whisper_processor.h`)
+  - 新增 Whisper 词级时间戳 (per-word timestamps):转写结果的每个分段带 `words` 数组,每个词有独立的起止时间和概率
+  - C++ API:`WhisperConfig::word_timestamps` 开关,结果填充到 `TranscriptionSegment::words`
+  - 新增 JSON 转写输出格式(`--transcribe ... --format json`),JSON 中同时包含分段级与词级时间戳;`SubtitleGenerator` 新增 `Format::JSON`
+  - 新增 `word_grouper` 工具(`src/utils/word_grouper.h`):将识别器子词 token 合并为完整单词(纯逻辑,无 Whisper 依赖,可独立单测)
+  - 修复 `whisper_processor` 中硬编码的 48kHz 输入采样率:改为可配置的 `WhisperConfig::input_sample_rate`
+
 ### 计划中 / Planned
 - macOS Intel x86_64 wheels（需付费 GitHub runner）
 - 实时推流（SRT/RTMP）

@@ -46,6 +46,8 @@ set(TEST_SOURCES
     unit/test_audio_processor.cpp
     unit/test_ring_buffer.cpp
     unit/test_audio_mixer.cpp
+    unit/test_word_grouper.cpp
+    unit/test_subtitle_generator.cpp
     # Add more test files as they are created
     # unit/test_audio_capture.cpp   # disabled: test API predates AudioCaptureDevice + needs real hardware
     # unit/test_audio_file_writer.cpp   # disabled: targets unimplemented AudioFileWriter stub

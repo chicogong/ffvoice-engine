@@ -32,6 +32,9 @@ bool SubtitleGenerator::Generate(const std::vector<TranscriptionSegment>& segmen
         case Format::VTT:
             content = GenerateVTT(segments);
             break;
+        case Format::JSON:
+            content = GenerateJSON(segments);
+            break;
         default:
             LOG_ERROR("Unknown subtitle format");
             return false;
@@ -134,6 +137,108 @@ std::string SubtitleGenerator::GenerateVTT(const std::vector<TranscriptionSegmen
             oss << "\n";
         }
     }
+
+    return oss.str();
+}
+
+namespace {
+
+/**
+ * @brief Escape a string for safe embedding as a JSON string value
+ *
+ * Handles the characters that would otherwise produce invalid JSON:
+ *   "  -> \"      backslash -> \\      newline -> \n
+ *   \r -> \r      tab       -> \t
+ * Other control characters (0x00-0x1F) are emitted as \u00XX escapes so the
+ * output is always valid JSON regardless of what the ASR produced.
+ *
+ * @param input Raw string (e.g. transcribed text)
+ * @return Escaped string (without surrounding quotes)
+ */
+std::string EscapeJSON(const std::string& input) {
+    std::ostringstream oss;
+
+    for (unsigned char c : input) {
+        switch (c) {
+            case '"':
+                oss << "\\\"";
+                break;
+            case '\\':
+                oss << "\\\\";
+                break;
+            case '\n':
+                oss << "\\n";
+                break;
+            case '\r':
+                oss << "\\r";
+                break;
+            case '\t':
+                oss << "\\t";
+                break;
+            default:
+                if (c < 0x20) {
+                    // Other control characters -> \u00XX
+                    oss << "\\u" << std::hex << std::setfill('0') << std::setw(4)
+                        << static_cast<int>(c) << std::dec;
+                } else {
+                    oss << c;
+                }
+                break;
+        }
+    }
+
+    return oss.str();
+}
+
+}  // namespace
+
+std::string SubtitleGenerator::GenerateJSON(const std::vector<TranscriptionSegment>& segments) {
+    std::ostringstream oss;
+
+    // Use fixed-point notation with 2 decimals for confidence/probability floats.
+    oss << std::fixed << std::setprecision(2);
+
+    oss << "{\n";
+    oss << "  \"segments\": [";
+    if (!segments.empty()) {
+        oss << "\n";
+    }
+
+    for (size_t i = 0; i < segments.size(); ++i) {
+        const auto& segment = segments[i];
+
+        oss << "    {\n";
+        oss << "      \"start_ms\": " << segment.start_ms << ",\n";
+        oss << "      \"end_ms\": " << segment.end_ms << ",\n";
+        oss << "      \"confidence\": " << segment.confidence << ",\n";
+        oss << "      \"text\": \"" << EscapeJSON(segment.text) << "\",\n";
+
+        // Per-word timestamps (empty array when no word data is available).
+        if (segment.words.empty()) {
+            oss << "      \"words\": []\n";
+        } else {
+            oss << "      \"words\": [\n";
+            for (size_t w = 0; w < segment.words.size(); ++w) {
+                const auto& word = segment.words[w];
+
+                oss << "        { \"start_ms\": " << word.start_ms
+                    << ", \"end_ms\": " << word.end_ms << ", \"text\": \""
+                    << EscapeJSON(word.text) << "\", \"probability\": " << word.probability
+                    << " }";
+                oss << (w < segment.words.size() - 1 ? ",\n" : "\n");
+            }
+            oss << "      ]\n";
+        }
+
+        oss << "    }";
+        oss << (i < segments.size() - 1 ? ",\n" : "\n");
+    }
+
+    if (!segments.empty()) {
+        oss << "  ";
+    }
+    oss << "]\n";
+    oss << "}\n";
 
     return oss.str();
 }

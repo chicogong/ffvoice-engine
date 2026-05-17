@@ -49,7 +49,8 @@ public:
     enum class Format {
         PlainText,  ///< Plain text without timestamps
         SRT,        ///< SubRip format (.srt)
-        VTT         ///< WebVTT format (.vtt)
+        VTT,        ///< WebVTT format (.vtt)
+        JSON        ///< JSON with per-segment and per-word timestamps (.json)
     };
 
     /**
@@ -98,6 +99,13 @@ private:
      * @return Formatted VTT string
      */
     static std::string GenerateVTT(const std::vector<TranscriptionSegment>& segments);
+
+    /**
+     * @brief Generate JSON output with per-segment and per-word timestamps
+     * @param segments Transcription segments
+     * @return Formatted JSON string
+     */
+    static std::string GenerateJSON(const std::vector<TranscriptionSegment>& segments);
 };
 
 }  // namespace ffvoice
