@@ -35,11 +35,11 @@ High-performance offline speech recognition library for Python, powered by C++ f
 | **🍎 Apple Silicon (M1/M2/M3)** | ✅ ARM64 | `pip install ffvoice` | ✅ Fully Supported |
 | **🍎 Intel Mac** | ❌ Not Compatible | Build from source | ⚠️ Manual Build Required |
 | **🐧 Linux x86_64** | ✅ x86_64 | `pip install ffvoice` | ✅ Fully Supported |
-| **🪟 Windows** | ⏳ Coming Soon | Build from source | 🚧 Under Development |
+| **🪟 Windows x86_64** | ✅ x86_64 | `pip install ffvoice` | ✅ Fully Supported |
 
 #### Quick Install (Recommended Platforms)
 
-**Apple Silicon (M1/M2/M3) & Linux x86_64:**
+**Apple Silicon (M1/M2/M3), Linux x86_64 & Windows x86_64:**
 ```bash
 pip install ffvoice
 ```
@@ -79,9 +79,10 @@ pip install ffvoice
 - Requires system libraries (see Prerequisites below)
 
 **Windows Users** 🪟
-- Currently requires building from source
-- MSVC 2019+ or MinGW-w64 required
-- Windows wheels coming in future release
+- ✅ One-line install works with prebuilt x86_64 wheels
+- ✅ Supports Python 3.9-3.12
+- ✅ Bundles required dependencies (no manual FFmpeg install needed)
+- **Note**: RNNoise noise reduction is disabled on Windows (MSVC lacks VLA support); all other features work
 
 ### Prerequisites
 
@@ -435,6 +436,7 @@ See the [examples](examples/) directory for complete working examples:
 
 - `basic_transcription.py` - Simple file transcription
 - `realtime_transcription.py` - Real-time audio processing
+- `complete_realtime_pipeline.py` - End-to-end capture, denoise, VAD and recognition pipeline
 
 ## Performance
 
