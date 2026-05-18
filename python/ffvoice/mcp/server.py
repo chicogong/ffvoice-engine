@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 from mcp.server.fastmcp import FastMCP
 
 import ffvoice
+from ffvoice.mcp._live_caption_pipeline import LiveCaptionSession
 from ffvoice.mcp._pipeline import CaptureSession
 
 # ---------------------------------------------------------------------------
@@ -369,6 +370,129 @@ def capture_and_transcribe(
         "denoise_applied": result["denoise_applied"],
         "speech_segments_found": result["speech_segments_found"],
     }
+
+
+# ---------------------------------------------------------------------------
+# Tool 4: capture_and_caption
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def capture_and_caption(
+    duration_seconds: float,
+    device_id: int = -1,
+    partial_interval_ms: int = 500,
+) -> Dict[str, Any]:
+    """
+    Capture live microphone audio and produce real-time captions using LiveCaptioner.
+
+    Everything runs fully on-device via Whisper ASR and VAD segmentation.
+    No audio or transcription data is ever transmitted to any external service.
+
+    The captioner emits two kinds of events while audio is being captured:
+
+    - **Partial**: intermediate caption emitted at *partial_interval_ms* intervals
+      while speech is ongoing.  The text may change as more audio arrives.
+    - **Final**: definitive caption emitted at the end of each detected utterance.
+      Includes a non-zero confidence score.
+
+    Args:
+        duration_seconds: How many seconds to record (must be between 1 and 120).
+        device_id: PortAudio device ID to use.  Pass -1 (default) for the
+            system default input device.
+        partial_interval_ms: Interval in milliseconds between Partial caption
+            attempts while speech is ongoing (default 500 ms).
+
+    Returns::
+
+        {
+            "events": [
+                {
+                    "type": "Partial" | "Final",
+                    "utterance_id": int,
+                    "text": str,
+                    "utterance_start_ms": int,
+                    "utterance_end_ms": int,
+                    "confidence": float
+                },
+                ...
+            ],
+            "duration_recorded_s": float,
+            "utterances_completed": int
+        }
+
+        On failure::
+
+            {"error": "<message>", "events": [], "duration_recorded_s": 0.0,
+             "utterances_completed": 0}
+
+    Raises:
+        ValueError: If duration_seconds is outside [1, 120].
+    """
+    if not (1 <= duration_seconds <= 120):
+        raise ValueError(f"duration_seconds must be between 1 and 120, got {duration_seconds}")
+
+    if not ffvoice._HAS_LIVE_CAPTIONER:
+        return {
+            "error": (
+                "LiveCaptioner is not available in this build. "
+                "Rebuild ffvoice-engine with ENABLE_WHISPER=ON."
+            ),
+            "events": [],
+            "duration_recorded_s": 0.0,
+            "utterances_completed": 0,
+        }
+
+    # Build LiveCaptionerConfig
+    lc_config = ffvoice.LiveCaptionerConfig()
+    lc_config.partial_interval_ms = partial_interval_ms
+    lc_config.sample_rate = 48000
+    lc_config.channels = 1
+    lc_config.suppress_whisper_progress = True
+    lc_config.whisper.model_type = ffvoice.WhisperModelType.TINY
+    lc_config.whisper.language = "auto"
+    lc_config.whisper.print_progress = False
+
+    model_path = _resolve_model_path("tiny")
+    if model_path:
+        lc_config.whisper.model_path = model_path
+
+    # PortAudio init
+    try:
+        ffvoice.AudioCapture.initialize()
+    except Exception as exc:
+        return {
+            "error": f"AudioCapture.initialize() failed: {exc}",
+            "events": [],
+            "duration_recorded_s": 0.0,
+            "utterances_completed": 0,
+        }
+
+    import time
+
+    t_start = time.time()
+    captioner = ffvoice.LiveCaptioner(lc_config)
+    capture = ffvoice.AudioCapture()
+    session = LiveCaptionSession(
+        capture=capture,
+        captioner=captioner,
+        sample_rate=48000,
+    )
+
+    try:
+        session.run(duration_seconds=duration_seconds, device_id=device_id)
+    except RuntimeError as exc:
+        return {
+            "error": str(exc),
+            "events": [],
+            "duration_recorded_s": round(time.time() - t_start, 2),
+            "utterances_completed": 0,
+        }
+    finally:
+        ffvoice.AudioCapture.terminate()
+
+    result = session.get_result()
+    return result
 
 
 # ---------------------------------------------------------------------------

@@ -64,6 +64,20 @@ try:
 except ImportError:
     _HAS_RNNOISE = False
 
+# LiveCaptioner is only present when the library was built with ENABLE_WHISPER=ON.
+# Import conditionally — the package remains fully usable without it.
+try:
+    from ._ffvoice import (  # noqa: F401
+        CaptionEvent,
+        CaptionEventType,
+        LiveCaptioner,
+        LiveCaptionerConfig,
+    )
+
+    _HAS_LIVE_CAPTIONER = True
+except ImportError:
+    _HAS_LIVE_CAPTIONER = False
+
 __all__ = [
     # Package metadata
     "__version__",
@@ -87,7 +101,12 @@ __all__ = [
     "FLACWriter",
     "AudioMixer",
     "RingBuffer",
-    # RNNoise (conditionally available)
+    # RNNoise (conditionally available — only when built with ENABLE_RNNOISE=ON)
     "RNNoise",
     "RNNoiseConfig",
+    # LiveCaptioner (conditionally available — only when built with ENABLE_WHISPER=ON)
+    "LiveCaptioner",
+    "LiveCaptionerConfig",
+    "CaptionEvent",
+    "CaptionEventType",
 ]
