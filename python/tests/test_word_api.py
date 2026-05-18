@@ -111,7 +111,7 @@ def test_whisper_config_word_timestamps_default():
         from ffvoice import WhisperConfig
 
         config = WhisperConfig()
-        assert config.word_timestamps == False
+        assert config.word_timestamps is False
     except ImportError as e:
         pytest.skip(f"Module not built yet: {e}")
 
@@ -123,7 +123,7 @@ def test_whisper_config_word_timestamps_assignable():
 
         config = WhisperConfig()
         config.word_timestamps = True
-        assert config.word_timestamps == True
+        assert config.word_timestamps is True
     except ImportError as e:
         pytest.skip(f"Module not built yet: {e}")
 

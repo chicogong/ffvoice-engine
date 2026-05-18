@@ -119,14 +119,12 @@ size_t WavWriter::WriteSamples(const int16_t* samples, size_t num_samples) {
     // The data chunk size is total_samples_ * bits_per_sample_ / 8 bytes.
     // Reject the write if accepting these samples would push it past the limit.
     const uint64_t bytes_per_sample = static_cast<uint64_t>(bits_per_sample_) / 8u;
-    const uint64_t current_data_bytes =
-        static_cast<uint64_t>(total_samples_) * bytes_per_sample;
-    const uint64_t incoming_data_bytes =
-        static_cast<uint64_t>(num_samples) * bytes_per_sample;
+    const uint64_t current_data_bytes = static_cast<uint64_t>(total_samples_) * bytes_per_sample;
+    const uint64_t incoming_data_bytes = static_cast<uint64_t>(num_samples) * bytes_per_sample;
 
     if (incoming_data_bytes > kMaxWavDataBytes - current_data_bytes) {
         size_limit_reached_ = true;
-        log_error(
+        LOG_ERROR(
             "WavWriter: data size would exceed the 4 GB WAV/RIFF limit; "
             "no further samples will be written (existing data is intact)");
         return 0;

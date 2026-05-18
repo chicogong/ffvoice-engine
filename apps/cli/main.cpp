@@ -21,8 +21,8 @@
 #endif
 
 #ifdef ENABLE_WHISPER
-    #include "audio/whisper_processor.h"
     #include "audio/vad_segmenter.h"
+    #include "audio/whisper_processor.h"
     #include "utils/subtitle_generator.h"
 #endif
 
@@ -393,7 +393,7 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
     std::atomic<int> segment_counter{0};
 
     if (transcribe_live) {
-#ifdef ENABLE_RNNOISE
+    #ifdef ENABLE_RNNOISE
         if (!rnnoise_vad || !rnnoise_ptr) {
             std::cerr << "Error: --transcribe-live requires --rnnoise-vad\n";
             return 1;
@@ -402,7 +402,7 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
         // Initialize Whisper processor for real-time transcription
         WhisperConfig whisper_config;
         whisper_config.language = "auto";
-        whisper_config.print_progress = false;  // Don't print progress for real-time
+        whisper_config.print_progress = false;             // Don't print progress for real-time
         whisper_config.enable_performance_metrics = true;  // Enable performance timing
         whisper_processor = std::make_unique<WhisperProcessor>(whisper_config);
 
@@ -415,19 +415,19 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
         // Initialize VAD segmenter
         VADSegmenter::Config vad_config;
         vad_config.speech_threshold = 0.5f;
-        vad_config.min_speech_frames = 30;   // ~0.3s
-        vad_config.min_silence_frames = 50;  // ~0.5s
+        vad_config.min_speech_frames = 30;        // ~0.3s
+        vad_config.min_silence_frames = 50;       // ~0.5s
         vad_config.max_segment_samples = 480000;  // 10s @48kHz
         vad_segmenter = std::make_unique<VADSegmenter>(vad_config);
 
         std::cout << "Real-time transcription initialized\n";
         std::cout << "  Whisper model: loaded\n";
         std::cout << "  VAD segmentation: enabled\n\n";
-#else
+    #else
         std::cerr << "Error: --transcribe-live requires RNNoise support\n";
         std::cerr << "Rebuild with: cmake -DENABLE_RNNOISE=ON -DENABLE_WHISPER=ON\n";
         return 1;
-#endif
+    #endif
     }
 #endif
 
@@ -468,7 +468,7 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
 #ifdef ENABLE_WHISPER
         // Real-time transcription: VAD segmentation
         if (transcribe_live && vad_segmenter && whisper_processor) {
-#ifdef ENABLE_RNNOISE
+    #ifdef ENABLE_RNNOISE
             if (rnnoise_ptr) {
                 // Get VAD probability from RNNoise
                 float vad_prob = rnnoise_ptr->GetVADProbability();
@@ -490,7 +490,7 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
                         }
                     });
             }
-#endif
+    #endif
         }
 #endif
 
@@ -763,8 +763,8 @@ int main(int argc, char* argv[]) {
                       << device_id << ")\n";
             return 1;
         }
-        if (enable_highpass && (highpass_freq <= 0.0f ||
-                                highpass_freq >= static_cast<float>(sample_rate) / 2.0f)) {
+        if (enable_highpass &&
+            (highpass_freq <= 0.0f || highpass_freq >= static_cast<float>(sample_rate) / 2.0f)) {
             std::cerr << "Error: --highpass frequency must be > 0 and below the Nyquist limit ("
                       << sample_rate / 2 << " Hz)\n";
             return 1;

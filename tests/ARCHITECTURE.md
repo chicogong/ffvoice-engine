@@ -2,7 +2,9 @@
 
 ## Overview
 
-This document describes the comprehensive test architecture for the ffvoice-engine Milestone 1, focusing on audio capture and playback functionality. The architecture is designed to ensure testability, maintainability, fast execution, and proper isolation.
+This document describes the test architecture for ffvoice-engine. The suite covers the full audio pipeline: capture, noise reduction (RNNoise), VAD segmentation, Whisper ASR, audio mixing, and file output. The architecture is designed for testability, maintainability, fast execution, and proper isolation.
+
+**Current status (v0.6.1)**: 270 unit tests, all passing.
 
 ## Design Principles
 
@@ -146,29 +148,25 @@ tests/
 │   │                           # - Noise (white, pink)
 │   │                           # - Complex signals (chirp, DTMF)
 │   │                           # - Signal manipulation
-│   ├── test_helpers.h         # Helper functions:
-│   │                           # - Signal analysis
-│   │                           # - Comparison utilities
-│   │                           # - Performance measurement
-│   │                           # - Format conversion
-│   └── test_architecture_example.cpp # Usage examples
+│   └── test_helpers.h         # Helper functions:
+│                               # - Signal analysis
+│                               # - Comparison utilities
+│                               # - Performance measurement
+│                               # - Format conversion
 │
-├── audio/                      # Audio component tests
-│   ├── test_audio_capture_example.cpp # Example test file
-│   ├── test_audio_capture.cpp # Capture functionality (to be created)
-│   ├── test_audio_playback.cpp # Playback functionality (to be created)
-│   └── test_audio_format.cpp  # Format handling (to be created)
-│
-├── processing/                 # Processing algorithm tests
-│   ├── test_resampler.cpp     # Resampling tests (to be created)
-│   ├── test_codec.cpp         # Codec tests (to be created)
-│   └── test_vad.cpp           # VAD tests (to be created)
-│
-├── integration/                # Integration tests
-│   └── test_audio_pipeline.cpp # End-to-end tests (to be created)
-│
-└── data/                       # Test data files
-    └── sample_audio/           # Sample audio files (to be added)
+└── unit/                       # Unit tests (270 tests, all passing)
+    ├── test_wav_writer.cpp         # WAV format, size guard
+    ├── test_flac_writer.cpp        # FLAC compression, HasError()
+    ├── test_signal_generator.cpp   # Waveform / noise generation
+    ├── test_audio_processor.cpp    # VolumeNormalizer, HighPassFilter, Chain
+    ├── test_vad_segmenter.cpp      # VAD state machine, thresholds
+    ├── test_logger.cpp             # LOG_* macros, levels, stderr routing
+    ├── test_audio_converter.cpp    # Resampling, format conversion
+    ├── test_rnnoise_processor.cpp  # Denoise, VAD probability
+    ├── test_ring_buffer.cpp        # Lock-free SPSC buffer
+    ├── test_audio_mixer.cpp        # Multi-track mixing
+    ├── test_subtitle_generator.cpp # SRT/VTT/JSON subtitle output
+    └── test_word_grouper.cpp       # Token-to-word grouping
 ```
 
 ## Key Design Decisions

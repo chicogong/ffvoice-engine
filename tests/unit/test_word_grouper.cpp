@@ -92,8 +92,8 @@ TEST_F(WordGrouperTest, ContinuationTokensMergeIntoSingleWord) {
 
     ASSERT_EQ(1u, words.size());
     EXPECT_EQ("unbelievable", words[0].text);
-    EXPECT_EQ(0, words[0].start_ms);    // first token's start
-    EXPECT_EQ(400, words[0].end_ms);    // last token's end
+    EXPECT_EQ(0, words[0].start_ms);  // first token's start
+    EXPECT_EQ(400, words[0].end_ms);  // last token's end
     EXPECT_FLOAT_EQ(1.0f, words[0].probability);
 }
 
@@ -212,10 +212,8 @@ TEST_F(WordGrouperTest, WordProbabilityIsMeanOfTokenProbabilities) {
 TEST_F(WordGrouperTest, ProbabilityMeanComputedPerWordIndependently) {
     // Two words, each averaging its own tokens only.
     std::vector<WordToken> tokens = {
-        Tok(" foo", 0, 100, 0.4f),
-        Tok("bar", 100, 200, 0.6f),   // word 0: mean(0.4, 0.6) = 0.5
-        Tok(" baz", 200, 300, 0.10f),
-        Tok("qux", 300, 400, 0.30f),
+        Tok(" foo", 0, 100, 0.4f),    Tok("bar", 100, 200, 0.6f),  // word 0: mean(0.4, 0.6) = 0.5
+        Tok(" baz", 200, 300, 0.10f), Tok("qux", 300, 400, 0.30f),
         Tok("ish", 400, 500, 0.50f),  // word 1: mean(0.1, 0.3, 0.5) = 0.3
     };
     auto words = GroupTokensIntoWords(tokens);
@@ -264,9 +262,9 @@ TEST_F(WordGrouperTest, EmptyTokenBetweenWordsDoesNotCreateExtraWord) {
 
 TEST_F(WordGrouperTest, LeadingAndTrailingEmptyTokensIgnored) {
     std::vector<WordToken> tokens = {
-        Tok("", 0, 0, 0.0f),       // leading empty
+        Tok("", 0, 0, 0.0f),  // leading empty
         Tok(" word", 100, 400, 0.9f),
-        Tok("", 400, 400, 0.0f),   // trailing empty
+        Tok("", 400, 400, 0.0f),  // trailing empty
     };
     auto words = GroupTokensIntoWords(tokens);
 

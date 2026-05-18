@@ -72,7 +72,9 @@ public:
     /**
      * @brief Get processor name
      */
-    std::string GetName() const override { return "RNNoiseProcessor"; }
+    std::string GetName() const override {
+        return "RNNoiseProcessor";
+    }
 
     /**
      * @brief Get the last VAD probability (0.0 = silence, 1.0 = speech)
@@ -82,7 +84,9 @@ public:
      *
      * @return VAD probability (0.0-1.0), or 0.0 if VAD is disabled
      */
-    float GetVADProbability() const { return last_vad_prob_; }
+    float GetVADProbability() const {
+        return last_vad_prob_;
+    }
 
 private:
     /**
@@ -101,7 +105,6 @@ private:
 
     // Format conversion buffers
     std::vector<float> float_buffer_;  ///< int16 -> float conversion
-    std::vector<int16_t> int16_buffer_;
 
     // Frame rebuffering (256 -> 480)
     std::vector<float> rebuffer_;  ///< Accumulation buffer
@@ -112,4 +115,4 @@ private:
     float last_vad_prob_ = 0.0f;  ///< Last VAD probability (0.0-1.0)
 };
 
-} // namespace ffvoice
+}  // namespace ffvoice

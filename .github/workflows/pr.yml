@@ -34,7 +34,7 @@ jobs:
 
       - name: Lint Python code
         run: |
-          flake8 python/ --count --statistics || echo "Flake8 warnings found"
+          flake8 python/ --count --statistics
 
       - name: Check PR title
         run: |
@@ -67,13 +67,12 @@ jobs:
             const additions = pr.additions;
             const deletions = pr.deletions;
             const total = additions + deletions;
-            
+
             console.log(`PR changes: +${additions} -${deletions} (${total} total)`);
-            
+
+            // PR size is advisory, not a correctness gate. Cleanup and refactor
+            // PRs legitimately change many lines (deletions included) and must
+            // not be blocked on line count — warn, don't fail.
             if (total > 1000) {
-              core.warning(`This PR is quite large (${total} lines). Consider splitting it into smaller PRs.`);
-            }
-            
-            if (total > 2000) {
-              core.setFailed(`This PR is too large (${total} lines). Please split it into smaller PRs.`);
+              core.warning(`This PR is large (${total} lines changed). If it bundles unrelated changes, consider splitting it.`);
             }

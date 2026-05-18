@@ -19,11 +19,11 @@ constexpr float kInt16Max = 32767.0f;
 
 bool AudioMixer::Initialize(int sample_rate, int channels) {
     if (sample_rate <= 0) {
-        log_error("AudioMixer: invalid sample rate " + std::to_string(sample_rate));
+        LOG_ERROR("AudioMixer: invalid sample rate %d", sample_rate);
         return false;
     }
     if (channels != 1 && channels != 2) {
-        log_error("AudioMixer: channels must be 1 or 2, got " + std::to_string(channels));
+        LOG_ERROR("AudioMixer: channels must be 1 or 2, got %d", channels);
         return false;
     }
 
@@ -34,14 +34,13 @@ bool AudioMixer::Initialize(int sample_rate, int channels) {
     tracks_.clear();
     initialized_ = true;
 
-    log_info("AudioMixer initialized: " + std::to_string(sample_rate) + "Hz, " +
-             std::to_string(channels) + " channel(s)");
+    LOG_INFO("AudioMixer initialized: %dHz, %d channel(s)", sample_rate, channels);
     return true;
 }
 
 int AudioMixer::AddTrack(float gain, float pan) {
     if (!initialized_) {
-        log_error("AudioMixer::AddTrack called before Initialize()");
+        LOG_ERROR("AudioMixer::AddTrack called before Initialize()");
         return kInvalidTrack;
     }
 
@@ -175,8 +174,7 @@ bool AudioMixer::MixBlock(const std::vector<MixerInput>& inputs, int16_t* output
         }
 
         for (size_t i = 0; i < num_samples; ++i) {
-            accumulator_[i] +=
-                static_cast<float>(input.samples[i]) * channel_gain[i % channels];
+            accumulator_[i] += static_cast<float>(input.samples[i]) * channel_gain[i % channels];
         }
     }
 

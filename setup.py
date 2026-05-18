@@ -126,8 +126,9 @@ if readme_path.exists():
     with open(readme_path, encoding="utf-8") as f:
         long_description = f.read()
 
-# Read version from __init__.py
-version = "0.4.0"
+# Read version from pyproject.toml (single source of truth).
+# Fall back to reading __init__.py, then the hard-coded default.
+version = "0.6.1"
 init_path = Path(__file__).parent / "python" / "ffvoice" / "__init__.py"
 if init_path.exists():
     with open(init_path, encoding="utf-8") as f:
@@ -176,8 +177,11 @@ setup(
     ],
     keywords="speech-recognition asr whisper voice-activity-detection noise-reduction rnnoise offline-transcription real-time-audio",
     install_requires=[
-        # No Python dependencies required for the native module
-        # Users can optionally install numpy for advanced features
+        # numpy is required by the C++ bindings: transcribe_buffer(),
+        # RNNoise.process(), VADSegmenter.process_frame(), AudioMixer.mix_block(),
+        # RingBuffer.push_bulk() / pop_bulk(), and AudioCapture.start() all
+        # accept or return NumPy arrays.
+        "numpy>=1.20",
     ],
     extras_require={
         "dev": [
@@ -186,9 +190,6 @@ setup(
             "black>=23.0",
             "flake8>=6.0",
             "mypy>=1.0",
-        ],
-        "numpy": [
-            "numpy>=1.20",
         ],
     },
 )

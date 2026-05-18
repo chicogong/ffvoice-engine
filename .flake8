@@ -1,0 +1,6 @@
+[flake8]
+# Match black's configured line length (see [tool.black] in pyproject.toml).
+max-line-length = 100
+# E203 / W503 conflict with black's formatting and are safe to ignore.
+extend-ignore = E203, W503
+exclude = .git,__pycache__,build,build-py,dist,*.egg-info

@@ -63,7 +63,8 @@ bool WhisperProcessor::Initialize() {
 
     // Validate model path is not empty
     if (config_.model_path.empty()) {
-        last_error_ = "Model path not set. Please set WhisperConfig::model_path to a valid model file";
+        last_error_ =
+            "Model path not set. Please set WhisperConfig::model_path to a valid model file";
         LOG_ERROR("%s", last_error_.c_str());
         return false;
     }
@@ -189,8 +190,7 @@ bool WhisperProcessor::TranscribeBuffer(const int16_t* samples, size_t num_sampl
 
     // Calculate performance metrics
     if (config_.enable_performance_metrics) {
-        auto total_ms =
-            std::chrono::duration<double, std::milli>(end_time - start_time).count();
+        auto total_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
         auto convert_ms =
             std::chrono::duration<double, std::milli>(convert_time - start_time).count();
         auto inference_ms =
@@ -204,9 +204,10 @@ bool WhisperProcessor::TranscribeBuffer(const int16_t* samples, size_t num_sampl
             static_cast<double>(num_samples) / static_cast<double>(config_.input_sample_rate);
         double realtime_factor = audio_duration_s * 1000.0 / total_ms;
 
-        LOG_INFO("Performance: total=%.1fms (convert=%.1fms, inference=%.1fms, extract=%.1fms), "
-                 "audio=%.2fs, RTF=%.2fx",
-                 total_ms, convert_ms, inference_ms, extract_ms, audio_duration_s, realtime_factor);
+        LOG_INFO(
+            "Performance: total=%.1fms (convert=%.1fms, inference=%.1fms, extract=%.1fms), "
+            "audio=%.2fs, RTF=%.2fx",
+            total_ms, convert_ms, inference_ms, extract_ms, audio_duration_s, realtime_factor);
     }
 
     return true;
@@ -332,8 +333,8 @@ void WhisperProcessor::ExtractSegments(std::vector<TranscriptionSegment>& segmen
                 }
 
                 // Token timestamps are in centiseconds -> convert to milliseconds
-                tokens.push_back(WordToken{token_text, token_data.t0 * 10, token_data.t1 * 10,
-                                           token_data.p});
+                tokens.push_back(
+                    WordToken{token_text, token_data.t0 * 10, token_data.t1 * 10, token_data.p});
             }
 
             segment.words = GroupTokensIntoWords(tokens);

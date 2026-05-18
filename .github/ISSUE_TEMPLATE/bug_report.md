@@ -47,8 +47,16 @@ assignees: ''
 - [ ] MSVC (版本: )
 
 **版本信息 / Version**:
+
+请提供您正在使用的 ffvoice-engine 版本号（如 `v0.6.1`）以及获取方式（PyPI / 源码编译 / GitHub Release）。
+Please provide the ffvoice-engine version you are using (e.g. `v0.6.1`) and how you obtained it (PyPI wheel / built from source / GitHub Release).
+
 ```bash
-./ffvoice --version
+# Python 用户 / Python users:
+python -c "import ffvoice; print(ffvoice.__version__)"
+
+# 从源码编译的用户，请查看 CMakeLists.txt 顶部或 CHANGELOG.md 中的版本号
+# Users who built from source: check the version at the top of CMakeLists.txt or in CHANGELOG.md
 ```
 
 **编译选项 / Build Options**:

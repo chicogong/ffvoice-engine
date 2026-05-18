@@ -204,7 +204,7 @@ TEST_F(AudioProcessorTest, HighPassFilter_RemovesDcOffset) {
 
     hpf.Process(samples.data(), samples.size());
 
-    EXPECT_LT(Rms(samples), in_rms * 0.3);  // DC strongly attenuated
+    EXPECT_LT(Rms(samples), in_rms * 0.3);                      // DC strongly attenuated
     EXPECT_LT(std::abs(static_cast<int>(samples.back())), 50);  // tail decayed to ~0
 }
 

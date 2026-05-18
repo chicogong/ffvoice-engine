@@ -25,8 +25,9 @@ def test_numpy_transcribe_buffer():
         config.model_type = _ffvoice.WhisperModelType.TINY
         asr = _ffvoice.WhisperASR(config)
 
-        # Note: This test just verifies the API works,
-        # actual transcription requires model initialization
+        # Calling transcribe_buffer exercises the NumPy-array code path;
+        # on an uninitialized model it raises RuntimeError (handled below).
+        asr.transcribe_buffer(audio)
         print("✅ transcribe_buffer API accepts NumPy arrays")
 
     except ImportError as e:
@@ -50,7 +51,6 @@ def test_numpy_rnnoise_process():
         # Create test audio (256 samples at 48kHz)
         num_samples = 256
         audio = np.random.randint(-1000, 1000, num_samples, dtype=np.int16)
-        original_audio = audio.copy()
 
         # Create RNNoise processor
         config = _ffvoice.RNNoiseConfig()

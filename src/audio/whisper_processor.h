@@ -79,15 +79,15 @@ struct WhisperConfig {
 #else
     std::string model_path = "";  ///< Path to whisper model file (must be set manually)
 #endif
-    std::string language = "auto";                ///< Language code ("auto", "zh", "en", etc.)
+    std::string language = "auto";  ///< Language code ("auto", "zh", "en", etc.)
     WhisperModelType model_type = WhisperModelType::TINY;  ///< Model size selection
-    int n_threads = 4;                            ///< Number of threads for inference
-    bool translate = false;                       ///< Translate to English if true
-    bool print_progress = true;                   ///< Print progress during processing
-    bool print_timestamps = false;                ///< Print timestamps with text
-    bool enable_performance_metrics = false;      ///< Enable performance timing metrics
-    bool word_timestamps = false;                 ///< Populate per-word timestamps in each segment
-    int input_sample_rate = 48000;                ///< Sample rate (Hz) of TranscribeBuffer() input
+    int n_threads = 4;                                     ///< Number of threads for inference
+    bool translate = false;                                ///< Translate to English if true
+    bool print_progress = true;                            ///< Print progress during processing
+    bool print_timestamps = false;                         ///< Print timestamps with text
+    bool enable_performance_metrics = false;               ///< Enable performance timing metrics
+    bool word_timestamps = false;   ///< Populate per-word timestamps in each segment
+    int input_sample_rate = 48000;  ///< Sample rate (Hz) of TranscribeBuffer() input
 };
 
 /**

@@ -52,8 +52,8 @@ def test_whisper_config():
         config = WhisperConfig()
         assert config.language == "auto"
         assert config.n_threads == 4
-        assert config.translate == False
-        assert config.enable_performance_metrics == False
+        assert config.translate is False
+        assert config.enable_performance_metrics is False
 
         # Test modification
         config.language = "en"
@@ -97,8 +97,8 @@ def test_audio_capture():
             assert hasattr(AudioCapture, static_method)
 
         # A freshly constructed device is neither open nor capturing.
-        assert capture.is_open() == False
-        assert capture.is_capturing() == False
+        assert capture.is_open() is False
+        assert capture.is_capturing() is False
     except ImportError as e:
         pytest.skip(f"Module not built yet: {e}")
 
@@ -152,7 +152,7 @@ def test_rnnoise_config():
 
         # Test modification
         config.enable_vad = True
-        assert config.enable_vad == True
+        assert config.enable_vad is True
     except ImportError as e:
         pytest.skip(f"Module not built yet: {e}")
 
