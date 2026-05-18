@@ -48,8 +48,9 @@ bool SubtitleGenerator::Generate(const std::vector<TranscriptionSegment>& segmen
         return false;
     }
 
-    // Write to file
-    std::ofstream file(output_file);
+    // Write in binary mode so newlines stay '\n' on every platform — text mode
+    // would translate '\n' -> '\r\n' on Windows, diverging from GenerateString().
+    std::ofstream file(output_file, std::ios::binary);
     if (!file.is_open()) {
         LOG_ERROR("Failed to open output file: %s", output_file.c_str());
         return false;
