@@ -22,9 +22,11 @@
 #endif
 
 #ifdef ENABLE_WHISPER
+    #include "audio/diarizer.h"
     #include "audio/live_captioner.h"
     #include "audio/vad_segmenter.h"
     #include "audio/whisper_processor.h"
+    #include "utils/audio_converter.h"
     #include "utils/subtitle_generator.h"
 #endif
 
@@ -188,6 +190,12 @@ void print_usage(const char* program_name) {
     std::cout << "    --transcribe-live     Alias for --live-captions (legacy name)\n";
     std::cout << "    --partial-interval MS Interval between partial caption attempts in ms\n";
     std::cout << "                          (default: 500)\n";
+    #ifdef ENABLE_DIARIZATION
+    std::cout << "    --diarize             Run speaker diarization on the transcript\n";
+    std::cout << "    --num-speakers N      Expected number of speakers (default: -1 = auto)\n";
+    #else
+    std::cout << "    (Speaker diarization not available - rebuild with -DENABLE_DIARIZATION=ON)\n";
+    #endif
 #else
     std::cout << "\n  (Whisper ASR not available - rebuild with -DENABLE_WHISPER=ON)\n";
 #endif
@@ -216,6 +224,12 @@ void print_usage(const char* program_name) {
               << " --record -o speech.wav --live-captions --partial-interval 300 -t 60\n";
     std::cout << "  " << program_name << " --record -o speech.wav --live-captions --json -t 60\n";
     std::cout << "  " << program_name << " --transcribe speech.wav -o -\n";
+    #ifdef ENABLE_DIARIZATION
+    std::cout << "  " << program_name
+              << " --transcribe meeting.wav --diarize --format json -o meeting.json\n";
+    std::cout << "  " << program_name
+              << " --transcribe meeting.wav --diarize --num-speakers 3 -o meeting.txt\n";
+    #endif
 #endif
 }
 
@@ -311,7 +325,8 @@ int list_devices() {
 
 #ifdef ENABLE_WHISPER
 int transcribe_file(const std::string& audio_file, const std::string& output_file,
-                    const std::string& format_str, const std::string& language) {
+                    const std::string& format_str, const std::string& language,
+                    bool diarize = false, int num_speakers = -1) {
     using namespace ffvoice;
 
     std::cerr << "Transcribing audio file:\n";
@@ -360,6 +375,33 @@ int transcribe_file(const std::string& audio_file, const std::string& output_fil
     }
 
     std::cerr << "Transcription complete: " << segments.size() << " segments\n\n";
+
+    #ifdef ENABLE_DIARIZATION
+    if (diarize) {
+        std::vector<float> pcm_data;
+        if (!ffvoice::AudioConverter::LoadAndConvert(audio_file, pcm_data, 16000)) {
+            emit_error(EXIT_RUNTIME, "Diarization: failed to load audio");
+            return EXIT_RUNTIME;
+        }
+        ffvoice::DiarizerConfig diar_cfg;
+        diar_cfg.num_speakers = num_speakers;
+        ffvoice::Diarizer diarizer(diar_cfg);
+        if (!diarizer.Init()) {
+            emit_error(EXIT_RUNTIME, "Diarization init failed: " + diarizer.GetLastError());
+            return EXIT_RUNTIME;
+        }
+        auto speaker_segments = diarizer.Diarize(pcm_data, diarizer.GetExpectedSampleRate());
+        ffvoice::MergeIntoSegments(segments, speaker_segments);
+        std::cerr << "Diarization complete: " << speaker_segments.size() << " speaker segments\n";
+    }
+    #else
+    if (diarize) {
+        emit_error(EXIT_RUNTIME,
+                   "--diarize is not available in this build "
+                   "(rebuild with -DENABLE_DIARIZATION=ON)");
+        return EXIT_RUNTIME;
+    }
+    #endif
 
     // Generate subtitle/transcript output
     if (output_file == "-") {
@@ -781,10 +823,18 @@ int main(int argc, char* argv[]) {
         std::string output_file;
         std::string format = "txt";     // default: plain text
         std::string language = "auto";  // default: auto-detect
+        bool diarize = false;           // run speaker diarization
+        int num_speakers = -1;          // -1 = auto-detect
 
         // Parse options
         for (int i = 3; i < fargc; ++i) {
             std::string arg = fargv[i];
+
+            // Boolean flag (no value) — handled before the "needs a value" check.
+            if (arg == "--diarize") {
+                diarize = true;
+                continue;
+            }
 
             if (i + 1 >= fargc)
                 break;
@@ -799,6 +849,11 @@ int main(int argc, char* argv[]) {
             } else if (arg == "--language") {
                 language = value;
                 ++i;
+            } else if (arg == "--num-speakers") {
+                if (!parse_int_arg(value, arg, num_speakers)) {
+                    return EXIT_BAD_ARGS;
+                }
+                ++i;
             }
         }
 
@@ -807,7 +862,7 @@ int main(int argc, char* argv[]) {
             return EXIT_BAD_ARGS;
         }
 
-        return transcribe_file(audio_file, output_file, format, language);
+        return transcribe_file(audio_file, output_file, format, language, diarize, num_speakers);
     }
 #endif
 
