@@ -230,6 +230,7 @@ if(ENABLE_WHISPER)
 
     list(APPEND FFVOICE_CORE_SOURCES
         src/audio/whisper_processor.cpp
+        src/audio/live_captioner.cpp
         src/utils/subtitle_generator.cpp
         src/utils/audio_converter.cpp
     )
