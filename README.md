@@ -445,6 +445,34 @@ for seg in asr.transcribe_file("audio.wav"):
 - 🔒 **100% 离线** - 无需网络，隐私安全
 - 🎙️ **完整工作流** - 采集 → 降噪 → VAD → 识别
 
+## 🤖 MCP Server (用于 AI agent)
+
+ffvoice 内置了一个 [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) 服务器，让 AI agent（如 Claude Desktop）能够直接调用本地离线语音识别能力，**全程无需联网，音频数据绝不离开本机**。
+
+### 安装
+
+```bash
+pip install 'ffvoice[mcp]'
+```
+
+### 提供的工具
+
+| 工具 | 说明 |
+|------|------|
+| `transcribe_file` | 转写本地音频文件（WAV/FLAC 等），支持语言选择、模型大小、词级时间戳 |
+| `list_audio_devices` | 列出所有可用的音频输入/输出设备及默认设备 ID |
+| `capture_and_transcribe` | 录制指定时长的麦克风音频并实时转写（内置 VAD 分段 + 可选 RNNoise 降噪） |
+
+### 接入 Claude Desktop
+
+将以下配置粘贴到 Claude Desktop 的 `claude_desktop_config.json`：
+
+```json
+{"mcpServers": {"ffvoice": {"command": "ffvoice-mcp", "args": []}}}
+```
+
+重启 Claude Desktop 后，即可在对话中直接请求转写本地音频或录制语音。
+
 ## 📁 项目结构
 
 ```

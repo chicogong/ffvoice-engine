@@ -52,7 +52,7 @@ jobs:
         cd build && ./tests/ffvoice_tests --gtest_brief=1
 
     - name: Build Python package
-      run: pip install -e .
+      run: pip install -e ".[mcp]"
 
     - name: Test Python import
       run: |
