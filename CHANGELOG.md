@@ -7,31 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-18
+
+本版本让 ffvoice 成为 **AI agent 可直接调用的离线语音工具**(agent-ready CLI + MCP server),并完成一轮可信度打磨(修复破损示例、补全文档、CI 加固、清理死代码)。
+
+This release makes ffvoice **an offline voice tool that AI agents can call directly** (agent-ready CLI + MCP server), plus a credibility pass.
+
 ### 新增 / Added
+
+- **MCP server(用于 AI agent)** (`python/ffvoice/mcp/`)
+  - 基于官方 `mcp` SDK(FastMCP)的 MCP server,让 Claude Desktop / Cursor / Claude Code 等把 ffvoice 当本地离线语音工具调用
+  - 3 个工具:`transcribe_file`、`list_audio_devices`、`capture_and_transcribe`
+  - `pip install ffvoice[mcp]` + `ffvoice-mcp` 入口点;stdio 传输,进程内调用 Python 绑定
+
+- **Agent-ready CLI** (`apps/cli/main.cpp`)
+  - `--version` / `-V`;`--json` 全局模式:`--list-devices` 出 JSON、`--record` 出 NDJSON 事件流、错误出结构化 JSON
+  - 退出码分类:`0` 成功 / `2` 参数错 / `3` 未找到 / `4` 运行时错
+  - `--transcribe -o -`:转写结果流式输出到 stdout;新增 `SubtitleGenerator::GenerateString()`
+
 - **多音轨混音 / Multi-track mixing** (`src/audio/audio_mixer.h`)
-  - 新增 `AudioMixer`:将多路 int16 音轨混音为单一输出
-  - 每条音轨独立的增益、声像 (pan)、静音控制,外加全局 master 增益
-  - float 累加后钳位到 int16,多路叠加会饱和而非溢出回绕
-  - 复用 float 暂存缓冲区,避免在音频路径上重复分配内存
-  - 新增 36 个单元测试(`tests/unit/test_audio_mixer.cpp`),默认构建测试套件 160 → 196
+  - `AudioMixer`:多路 int16 音轨混音,每轨独立增益/声像/静音 + 全局 master 增益;float 累加钳位到 int16(饱和而非回绕)
 
 - **Whisper 词级时间戳 / Word-level timestamps** (`src/audio/whisper_processor.h`)
-  - 新增 Whisper 词级时间戳 (per-word timestamps):转写结果的每个分段带 `words` 数组,每个词有独立的起止时间和概率
-  - C++ API:`WhisperConfig::word_timestamps` 开关,结果填充到 `TranscriptionSegment::words`
-  - 新增 JSON 转写输出格式(`--transcribe ... --format json`),JSON 中同时包含分段级与词级时间戳;`SubtitleGenerator` 新增 `Format::JSON`
-  - 新增 `word_grouper` 工具(`src/utils/word_grouper.h`):将识别器子词 token 合并为完整单词(纯逻辑,无 Whisper 依赖,可独立单测)
-  - 修复 `whisper_processor` 中硬编码的 48kHz 输入采样率:改为可配置的 `WhisperConfig::input_sample_rate`
+  - 每个转写分段带 `words` 数组(逐词起止时间与概率);`WhisperConfig::word_timestamps` 开关
+  - 新增 JSON 转写输出格式;新增 `word_grouper` 工具(子词 token → 完整单词,纯逻辑可独立单测)
+  - 修复硬编码的 48kHz 输入采样率 → 可配置 `WhisperConfig::input_sample_rate`
 
 - **Python 绑定扩展 / Python bindings** (`src/python/bindings.cpp`)
-  - 新增 `ffvoice.AudioMixer`:多音轨混音器,支持 `initialize` / `add_track` / `set_gain` / `set_pan` / `set_mute` / `set_master_gain` / `mix_block`,以 NumPy int16 数组进行混音
-  - 新增 `ffvoice.RingBuffer`:无锁 SPSC 环形缓冲区(int16 音频样本),支持 `push` / `pop` / `push_bulk` / `pop_bulk`(NumPy)/ `size` / `capacity` / `clear`
-  - 新增词级时间戳 Python API:`ffvoice.Word`(`start_ms` / `end_ms` / `text` / `probability`)、`TranscriptionSegment.words` 列表,以及 `WhisperConfig.word_timestamps` 与 `WhisperConfig.input_sample_rate` 配置项
-  - Added `ffvoice.AudioMixer`, `ffvoice.RingBuffer`, and the word-timestamp API (`Word` / `TranscriptionSegment.words` / `WhisperConfig.word_timestamps`) to the Python bindings
+  - 新增 `ffvoice.AudioMixer`、`ffvoice.RingBuffer`(无锁 SPSC)、词级时间戳 API(`Word` / `TranscriptionSegment.words`)
+  - 重写 3 个破损示例(此前调用不存在的 API);新增 `.pyi` 类型存根
+
+### 变更 / Changed
+
+- **CLI stdout/stderr 纪律** —— 库 `LOG_INFO` 与全部诊断输出改走 stderr,stdout 只承载结果数据(AI agent 可干净解析)
+- **CI 加固** —— 质量门由装饰性改为阻断式;clang-format 固定到 22.1.5;新增 `.flake8`;CI 真跑 Python 示例
+- **文档** —— 补齐 CHANGELOG 缺口(0.4.0–0.5.4);README 新增诚实的「为什么用 ffvoice」定位;修正 Python API 文档与示例
+
+### 移除 / Removed
+
+- **⚠️ Python 3.9 支持** —— 3.9 于 2025-10 EOL,且 MCP SDK 要求 Python ≥3.10;**最低版本现为 Python 3.10**
+- **WebRTC APM** —— 此前为非功能的 no-op 桩,连同 547 行误导性文档一并移除
+- 死代码:`audio_file_writer` 占位、~1300 行禁用测试;过时的 codecov 徽章、未使用的 mypy 依赖
+
+### 修复 / Fixed
+
+- 3 个破损的 Python 示例脚本(调用不存在的 API,复制即崩)
+- `LOG_WARNING` 错误地写到 stdout(应为 stderr)
+- `setup.py` 版本号停留在 0.4.0
 
 ### 计划中 / Planned
-- macOS Intel x86_64 wheels（需付费 GitHub runner）
-- 实时推流（SRT/RTMP）
-- GUI 客户端
+- 实时字幕流 Live Captioning(partial/final 字幕事件)
+- 说话人分离 Speaker Diarization
+- macOS Intel x86_64 wheels(需付费 GitHub runner)
 
 ---
 

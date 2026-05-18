@@ -2,12 +2,12 @@
 
 **Project**: ffvoice-engine
 **PyPI Package**: `ffvoice`
-**Current Version**: v0.6.1
+**Current Version**: v0.7.0
 **PyPI URL**: https://pypi.org/project/ffvoice/
 
 ---
 
-## Published Platforms (v0.6.1)
+## Published Platforms (v0.7.0)
 
 | Platform | Wheel Tag | Python | Status |
 |----------|-----------|--------|--------|

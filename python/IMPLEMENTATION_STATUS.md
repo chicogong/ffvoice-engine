@@ -1,7 +1,7 @@
 # ffvoice Python Bindings - Implementation Status
 
 **Last Updated**: 2026-05-18
-**Current Version**: v0.6.1
+**Current Version**: v0.7.0
 
 ## Status Summary
 
@@ -131,4 +131,4 @@ python -c "import ffvoice; print(ffvoice.__version__)"
 
 ---
 
-**Status**: Phases 1–8 complete. Published on PyPI as `ffvoice`. Current version: **v0.6.1**.
+**Status**: Phases 1–8 complete. Published on PyPI as `ffvoice`. Current version: **v0.7.0**.
