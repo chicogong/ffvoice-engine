@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 新增 `word_grouper` 工具(`src/utils/word_grouper.h`):将识别器子词 token 合并为完整单词(纯逻辑,无 Whisper 依赖,可独立单测)
   - 修复 `whisper_processor` 中硬编码的 48kHz 输入采样率:改为可配置的 `WhisperConfig::input_sample_rate`
 
+- **Python 绑定扩展 / Python bindings** (`src/python/bindings.cpp`)
+  - 新增 `ffvoice.AudioMixer`:多音轨混音器,支持 `initialize` / `add_track` / `set_gain` / `set_pan` / `set_mute` / `set_master_gain` / `mix_block`,以 NumPy int16 数组进行混音
+  - 新增 `ffvoice.RingBuffer`:无锁 SPSC 环形缓冲区(int16 音频样本),支持 `push` / `pop` / `push_bulk` / `pop_bulk`(NumPy)/ `size` / `capacity` / `clear`
+  - 新增词级时间戳 Python API:`ffvoice.Word`(`start_ms` / `end_ms` / `text` / `probability`)、`TranscriptionSegment.words` 列表,以及 `WhisperConfig.word_timestamps` 与 `WhisperConfig.input_sample_rate` 配置项
+  - Added `ffvoice.AudioMixer`, `ffvoice.RingBuffer`, and the word-timestamp API (`Word` / `TranscriptionSegment.words` / `WhisperConfig.word_timestamps`) to the Python bindings
+
 ### 计划中 / Planned
 - macOS Intel x86_64 wheels（需付费 GitHub runner）
 - 实时推流（SRT/RTMP）

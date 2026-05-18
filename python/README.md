@@ -293,6 +293,86 @@ flac_writer.close()
 print(f"Wrote {samples_written} samples to FLAC (compression: {compression_ratio:.2f}x)")
 ```
 
+### Word-Level Timestamps
+
+```python
+import ffvoice
+
+# Enable per-word timestamps in the Whisper config
+config = ffvoice.WhisperConfig()
+config.model_type = ffvoice.WhisperModelType.TINY
+config.word_timestamps = True  # Populate `words` for every segment
+
+asr = ffvoice.WhisperASR(config)
+asr.initialize()
+
+segments = asr.transcribe_file("audio.wav")
+for segment in segments:
+    print(f"[{segment.start_ms}ms -> {segment.end_ms}ms] {segment.text}")
+    # Each segment now carries a list of `Word` objects
+    for word in segment.words:
+        print(f"  {word.start_ms}-{word.end_ms}ms  "
+              f"'{word.text}'  (p={word.probability:.2f})")
+```
+
+When transcribing a NumPy buffer whose sample rate is not 48000 Hz, set
+`config.input_sample_rate` so the audio is resampled correctly:
+
+```python
+config = ffvoice.WhisperConfig()
+config.input_sample_rate = 16000  # Sample rate of the buffer passed to transcribe_buffer()
+```
+
+### Multi-Track Audio Mixing
+
+```python
+import ffvoice
+import numpy as np
+
+# Create and initialize a mixer (channels must be 1 or 2)
+mixer = ffvoice.AudioMixer()
+mixer.initialize(sample_rate=48000, channels=2)
+
+# Add tracks; add_track() returns the new track id
+voice = mixer.add_track(gain=1.0, pan=0.0)    # centered
+music = mixer.add_track(gain=0.5, pan=-0.3)   # quieter, slightly left
+
+# Adjust tracks at any time
+mixer.set_gain(music, 0.4)
+mixer.set_pan(voice, 0.2)
+mixer.set_mute(music, False)
+mixer.set_master_gain(0.9)
+
+# Mix a block: {track_id: int16 ndarray}; all arrays must be the same length
+voice_block = np.random.randint(-2000, 2000, 480, dtype=np.int16)
+music_block = np.random.randint(-2000, 2000, 480, dtype=np.int16)
+mixed = mixer.mix_block({voice: voice_block, music: music_block})
+print(f"Mixed {len(mixed)} samples across {mixer.get_track_count()} tracks")
+```
+
+### Lock-Free Ring Buffer
+
+```python
+import ffvoice
+import numpy as np
+
+# SPSC ring buffer holding up to `capacity` int16 samples
+buf = ffvoice.RingBuffer(capacity=4096)
+
+# Bulk transfer with NumPy (e.g. audio thread -> processing thread)
+samples = np.random.randint(-1000, 1000, 1024, dtype=np.int16)
+pushed = buf.push_bulk(samples)          # number actually pushed
+print(f"pushed={pushed}, size={buf.size()}, full={buf.full()}")
+
+chunk = buf.pop_bulk(512)                # 1-D int16 ndarray (may be shorter)
+print(f"popped {len(chunk)} samples, remaining={buf.size()}")
+
+# Single-element access
+buf.push(42)
+value = buf.pop()                        # int, or None if empty
+buf.clear()
+```
+
 ## API Reference
 
 ### Core Classes
@@ -370,6 +450,41 @@ Write audio to FLAC files with compression and NumPy support.
 - `is_open` - Property: check if file is open (bool)
 - `total_samples` - Property: get total samples written (int)
 
+#### `AudioMixer`
+Multi-track mixer that combines several int16 audio tracks into one output.
+
+**Methods:**
+- `initialize(sample_rate, channels)` - Initialize the mixer (channels must be 1 or 2)
+- `is_initialized()` - Check if the mixer is initialized (bool)
+- `get_sample_rate()` / `get_channels()` - Get the mixer configuration (int)
+- `add_track(gain=1.0, pan=0.0)` - Add a track, returns its track id (int; -1 if not initialized)
+- `remove_track(track_id)` - Remove a track, returns `True` if it existed (bool)
+- `has_track(track_id)` - Check whether a track exists (bool)
+- `get_track_count()` - Number of registered tracks (int)
+- `set_gain(track_id, gain)` / `get_gain(track_id)` - Track linear gain (clamped to [0, 8])
+- `set_pan(track_id, pan)` / `get_pan(track_id)` - Track stereo pan (-1 = left, 0 = center, +1 = right)
+- `set_mute(track_id, muted)` / `is_muted(track_id)` - Mute or unmute a track
+- `set_master_gain(gain)` / `get_master_gain()` - Master gain applied to the mix (clamped to [0, 8])
+- `mix_block(tracks)` - Mix `{track_id: int16 ndarray}` into a single mixed int16 ndarray; all arrays must have the same length
+- `reset()` - Remove all tracks and reset the master gain
+
+#### `RingBuffer`
+Lock-free single-producer/single-consumer (SPSC) ring buffer for int16 audio samples.
+
+**Constructor:**
+- `RingBuffer(capacity)` - Create a buffer holding up to `capacity` int16 samples
+
+**Methods:**
+- `push(value)` - Push one value, returns `False` if the buffer is full (bool)
+- `pop()` - Pop one value, returns `None` if the buffer is empty (int or None)
+- `push_bulk(data)` - Push values from a 1-D int16 ndarray, returns the number actually pushed (int)
+- `pop_bulk(count)` - Pop up to `count` values, returns them as a 1-D int16 ndarray
+- `size()` / `capacity()` - Current element count and maximum capacity (int)
+- `empty()` / `full()` - Check buffer state (bool)
+- `available_read()` - Number of elements available to pop (int)
+- `available_write()` - Number of elements that can still be pushed (int)
+- `clear()` - Reset the buffer to empty
+
 ### Data Classes
 
 #### `TranscriptionSegment`
@@ -380,6 +495,16 @@ Speech recognition result with timestamp.
 - `end_ms` - End time in milliseconds (int)
 - `text` - Transcribed text (string)
 - `confidence` - Confidence score 0.0-1.0 (float)
+- `words` - List of `Word` objects (empty unless `WhisperConfig.word_timestamps` was enabled)
+
+#### `Word`
+Per-word timestamp within a `TranscriptionSegment`.
+
+**Fields:**
+- `start_ms` - Word start time in milliseconds (int)
+- `end_ms` - Word end time in milliseconds (int)
+- `text` - Word text (string)
+- `probability` - Mean token probability for this word, 0.0-1.0 (float)
 
 #### `AudioDeviceInfo`
 Audio device information.
@@ -400,6 +525,8 @@ Audio device information.
 - `model_type` - Model size (TINY, BASE, SMALL, MEDIUM, LARGE)
 - `n_threads` - Number of CPU threads
 - `enable_performance_metrics` - Enable timing metrics
+- `word_timestamps` - Populate per-word timestamps in each `TranscriptionSegment.words` (bool, default `False`)
+- `input_sample_rate` - Sample rate (Hz) of audio passed to `transcribe_buffer()` (int, default 48000)
 
 #### `AudioCaptureConfig`
 - `sample_rate` - Sample rate in Hz (default: 48000)

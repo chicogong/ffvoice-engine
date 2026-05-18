@@ -422,13 +422,30 @@ capture.start(audio_callback)
 capture.stop()
 capture.close()
 ffvoice.AudioCapture.terminate()
+
+# 4. 多音轨混音
+mixer = ffvoice.AudioMixer()
+mixer.initialize(sample_rate=48000, channels=2)
+track = mixer.add_track(gain=1.0, pan=0.0)
+mixed = mixer.mix_block({track: np.zeros(480, dtype=np.int16)})
+
+# 5. 无锁环形缓冲区（实时音频路径的线程间交接）
+ring = ffvoice.RingBuffer(capacity=4096)
+ring.push_bulk(np.zeros(1024, dtype=np.int16))
+chunk = ring.pop_bulk(512)
+
+# 6. 词级时间戳
+config.word_timestamps = True  # 转写结果的每个分段附带 words 数组
+for seg in asr.transcribe_file("audio.wav"):
+    for word in seg.words:
+        print(f"  [{word.start_ms}-{word.end_ms}ms] {word.text}")
 ```
 
 ### 完整文档
 
 详细文档和示例请查看 [`python/README.md`](python/README.md):
-- 📖 完整 API 参考
-- 🎯 13+ 代码示例
+- 📖 完整 API 参考（含 `AudioMixer` 多音轨混音、`RingBuffer` 无锁环形缓冲区、词级时间戳 `Word` / `TranscriptionSegment.words`）
+- 🎯 16+ 代码示例
 - 🚀 Quick Start 指南
 - 📓 Jupyter Notebook 教程
 

@@ -10,7 +10,7 @@ def test_import():
     try:
         import ffvoice
 
-        assert ffvoice.__version__ == "0.4.0"
+        assert ffvoice.__version__ == "0.6.1"
     except ImportError as e:
         pytest.skip(f"Module not built yet: {e}")
 
@@ -21,8 +21,8 @@ def test_transcription_segment():
         from ffvoice import TranscriptionSegment
 
         segment = TranscriptionSegment(0, 1000, "Hello world")
-        assert segment.start_time_ms == 0
-        assert segment.end_time_ms == 1000
+        assert segment.start_ms == 0
+        assert segment.end_ms == 1000
         assert segment.text == "Hello world"
         assert "Hello world" in repr(segment)
     except ImportError as e:
@@ -67,22 +67,58 @@ def test_whisper_config():
         pytest.skip(f"Module not built yet: {e}")
 
 
-def test_audio_capture_config():
-    """Test AudioCaptureConfig class"""
+def test_audio_capture():
+    """Test AudioCapture class is importable and exposes expected methods"""
     try:
-        from ffvoice import AudioCaptureConfig
+        from ffvoice import AudioCapture
 
-        config = AudioCaptureConfig()
-        assert config.sample_rate == 48000
-        assert config.channels == 1
-        assert config.frames_per_buffer == 256
-        assert config.device_index == -1
+        # AudioCapture can be constructed without touching hardware.
+        capture = AudioCapture()
 
-        # Test modification
-        config.sample_rate = 16000
-        config.channels = 2
-        assert config.sample_rate == 16000
-        assert config.channels == 2
+        # Check expected methods exist (do not call ones that touch hardware).
+        for method in (
+            "open",
+            "start",
+            "stop",
+            "close",
+            "is_open",
+            "is_capturing",
+            "get_sample_rate",
+            "get_channels",
+        ):
+            assert hasattr(capture, method)
+
+        for static_method in (
+            "initialize",
+            "terminate",
+            "get_devices",
+            "get_default_input_device",
+        ):
+            assert hasattr(AudioCapture, static_method)
+
+        # A freshly constructed device is neither open nor capturing.
+        assert capture.is_open() == False
+        assert capture.is_capturing() == False
+    except ImportError as e:
+        pytest.skip(f"Module not built yet: {e}")
+
+
+def test_audio_device_info():
+    """Test AudioDeviceInfo class is importable and exposes expected fields"""
+    try:
+        from ffvoice import AudioDeviceInfo
+
+        # AudioDeviceInfo carries device metadata; verify the attributes
+        # are bound (instances are produced by AudioCapture.get_devices()).
+        for field in (
+            "id",
+            "name",
+            "max_input_channels",
+            "max_output_channels",
+            "supported_sample_rates",
+            "is_default",
+        ):
+            assert hasattr(AudioDeviceInfo, field)
     except ImportError as e:
         pytest.skip(f"Module not built yet: {e}")
 

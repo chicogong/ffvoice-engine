@@ -67,6 +67,8 @@ def test_numpy_rnnoise_process():
 
     except ImportError as e:
         pytest.skip(f"Module not built yet: {e}")
+    except AttributeError as e:
+        pytest.skip(f"RNNoise support not built in (ENABLE_RNNOISE off): {e}")
 
 
 def test_numpy_rnnoise_readonly():
@@ -94,6 +96,8 @@ def test_numpy_rnnoise_readonly():
 
     except ImportError as e:
         pytest.skip(f"Module not built yet: {e}")
+    except AttributeError as e:
+        pytest.skip(f"RNNoise support not built in (ENABLE_RNNOISE off): {e}")
 
 
 def test_numpy_wav_writer():
@@ -210,6 +214,8 @@ def test_numpy_multidimensional_error():
 
     except ImportError as e:
         pytest.skip(f"Module not built yet: {e}")
+    except AttributeError as e:
+        pytest.skip(f"RNNoise support not built in (ENABLE_RNNOISE off): {e}")
 
 
 if __name__ == "__main__":
