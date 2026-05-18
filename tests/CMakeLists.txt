@@ -64,17 +64,25 @@ target_link_libraries(ffvoice_tests
     ffvoice-core  # Link to core library
 )
 
-# Compiler options for tests
-target_compile_options(ffvoice_tests PRIVATE
-    -Wall
-    -Wextra
-    -Wpedantic
-    $<$<CONFIG:Debug>:-g -O0 --coverage>
-    $<$<CONFIG:Release>:-O3>
-)
+# Compiler options for tests — mirror the pattern in the top-level CMakeLists.txt
+if(MSVC)
+    target_compile_options(ffvoice_tests PRIVATE
+        /W4
+        /permissive-
+        $<$<CONFIG:Release>:/O2>
+    )
+else()
+    target_compile_options(ffvoice_tests PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        $<$<CONFIG:Debug>:-g -O0 --coverage>
+        $<$<CONFIG:Release>:-O3>
+    )
+endif()
 
-# Linker options for code coverage
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+# Linker options for code coverage (GCC/Clang only — not supported on MSVC)
+if(NOT MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_link_options(ffvoice_tests PRIVATE --coverage)
 endif()
 

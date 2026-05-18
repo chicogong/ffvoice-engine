@@ -17,7 +17,8 @@ using namespace ffvoice;
 class FlacWriterTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        test_file_ = "/tmp/test_flac_writer.flac";
+        // testing::TempDir() is cross-platform (POSIX /tmp/ or Windows %TEMP%).
+        test_file_ = ::testing::TempDir() + "test_flac_writer.flac";
     }
 
     void TearDown() override {
@@ -144,7 +145,8 @@ TEST_F(FlacWriterTest, CompressionLevels) {
     auto samples = SignalGenerator::GenerateSineWave(440.0, 1.0, 48000, 0.5);
 
     for (int level : {0, 5, 8}) {
-        std::string filename = "/tmp/test_flac_level_" + std::to_string(level) + ".flac";
+        std::string filename =
+            ::testing::TempDir() + "test_flac_level_" + std::to_string(level) + ".flac";
 
         FlacWriter writer;
         ASSERT_TRUE(writer.Open(filename, 48000, 1, 16, level));
@@ -169,7 +171,8 @@ TEST_F(FlacWriterTest, SupportVariousSampleRates) {
     std::vector<int> sample_rates = {8000, 16000, 22050, 44100, 48000, 96000};
 
     for (int rate : sample_rates) {
-        std::string filename = "/tmp/test_flac_rate_" + std::to_string(rate) + ".flac";
+        std::string filename =
+            ::testing::TempDir() + "test_flac_rate_" + std::to_string(rate) + ".flac";
 
         FlacWriter writer;
         EXPECT_TRUE(writer.Open(filename, rate, 1))
@@ -246,7 +249,7 @@ TEST_F(FlacWriterTest, ReopenAfterClose) {
     writer.Close();
 
     // Second file
-    std::string test_file2 = "/tmp/test_flac_writer2.flac";
+    std::string test_file2 = ::testing::TempDir() + "test_flac_writer2.flac";
     ASSERT_TRUE(writer.Open(test_file2, 44100, 2));
     std::vector<int16_t> samples2(2000, 200);
     writer.WriteSamples(samples2);

@@ -23,8 +23,10 @@ class SubtitleGeneratorTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // A unique-ish temp path per test, removed in TearDown().
+        // testing::TempDir() is cross-platform (returns e.g. /tmp/ on POSIX,
+        // %TEMP%\ on Windows) and is provided by GoogleTest.
         std::ostringstream path;
-        path << "/tmp/ffvoice_subtitle_test_"
+        path << ::testing::TempDir() << "ffvoice_subtitle_test_"
              << ::testing::UnitTest::GetInstance()->current_test_info()->name() << ".out";
         temp_path_ = path.str();
         std::remove(temp_path_.c_str());

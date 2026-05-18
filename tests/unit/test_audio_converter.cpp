@@ -276,7 +276,10 @@ TEST_F(AudioConverterTest, LoadAndConvert_NonexistentFile) {
 
 TEST_F(AudioConverterTest, LoadAndConvert_UnsupportedExtension) {
     std::vector<float> pcm_data;
-    bool result = AudioConverter::LoadAndConvert("/tmp/test.mp3", pcm_data);
+    // Use a nonexistent path that looks like an unsupported extension.
+    // testing::TempDir() keeps the path portable (POSIX and Windows).
+    std::string mp3_path = ::testing::TempDir() + "nonexistent_test.mp3";
+    bool result = AudioConverter::LoadAndConvert(mp3_path, pcm_data);
 
     EXPECT_FALSE(result);
 }

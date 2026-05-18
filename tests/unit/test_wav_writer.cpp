@@ -17,7 +17,8 @@ using namespace ffvoice;
 class WavWriterTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        test_file_ = "/tmp/test_wav_writer.wav";
+        // testing::TempDir() is cross-platform (POSIX /tmp/ or Windows %TEMP%).
+        test_file_ = ::testing::TempDir() + "test_wav_writer.wav";
     }
 
     void TearDown() override {
@@ -190,7 +191,7 @@ TEST_F(WavWriterTest, SupportVariousSampleRates) {
 
     for (int rate : sample_rates) {
         WavWriter writer;
-        std::string filename = "/tmp/test_" + std::to_string(rate) + ".wav";
+        std::string filename = ::testing::TempDir() + "test_" + std::to_string(rate) + ".wav";
 
         ASSERT_TRUE(writer.Open(filename, rate, 1, 16))
             << "Failed to open with sample rate " << rate;
