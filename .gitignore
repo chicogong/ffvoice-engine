@@ -1,6 +1,5 @@
 # Build directories
-build/
-build-py/
+build*/
 cmake-build-*/
 out/
 bin/

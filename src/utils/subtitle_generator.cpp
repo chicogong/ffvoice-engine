@@ -220,6 +220,7 @@ std::string SubtitleGenerator::GenerateJSON(const std::vector<TranscriptionSegme
         oss << "      \"start_ms\": " << segment.start_ms << ",\n";
         oss << "      \"end_ms\": " << segment.end_ms << ",\n";
         oss << "      \"confidence\": " << segment.confidence << ",\n";
+        oss << "      \"speaker_id\": " << segment.speaker_id << ",\n";
         oss << "      \"text\": \"" << EscapeJSON(segment.text) << "\",\n";
 
         // Per-word timestamps (empty array when no word data is available).

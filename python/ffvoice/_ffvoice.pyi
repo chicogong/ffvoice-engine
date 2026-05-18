@@ -69,6 +69,8 @@ class TranscriptionSegment:
     """Transcribed text."""
     confidence: float
     """Confidence score (0.0 – 1.0)."""
+    speaker_id: int
+    """Speaker index, 0-based; -1 = unknown / diarization not run."""
     words: list[Word]
     """Per-word timestamps (empty unless WhisperConfig.word_timestamps was True)."""
 

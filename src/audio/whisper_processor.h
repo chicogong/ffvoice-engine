@@ -50,6 +50,8 @@ struct TranscriptionSegment {
     std::string text;         ///< Transcribed text content
     float confidence;         ///< Confidence score (0.0-1.0)
     std::vector<Word> words;  ///< Per-word timestamps (empty unless word_timestamps enabled)
+    /// Speaker index, 0-based; -1 = unknown / diarization not run
+    int32_t speaker_id = -1;
 
     TranscriptionSegment() : start_ms(0), end_ms(0), confidence(0.0f) {
     }
