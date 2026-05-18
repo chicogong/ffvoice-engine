@@ -22,6 +22,7 @@
 #endif
 
 #ifdef ENABLE_WHISPER
+    #include "audio/live_captioner.h"
     #include "audio/vad_segmenter.h"
     #include "audio/whisper_processor.h"
     #include "utils/subtitle_generator.h"
@@ -181,8 +182,12 @@ void print_usage(const char* program_name) {
     std::cout << "    --transcribe FILE     Transcribe audio file (offline mode)\n";
     std::cout << "    --format FMT          Subtitle format: txt, srt, vtt, json (default: txt)\n";
     std::cout << "    --language LANG       Language: auto, zh, en, etc. (default: auto)\n";
-    std::cout << "    --transcribe-live     Enable real-time transcription during recording\n";
-    std::cout << "                          (requires --rnnoise-vad for VAD-based segmentation)\n";
+    std::cout << "    --live-captions       Enable real-time live captioning during recording\n";
+    std::cout
+        << "                          (LiveCaptioner engine; worker thread handles Whisper)\n";
+    std::cout << "    --transcribe-live     Alias for --live-captions (legacy name)\n";
+    std::cout << "    --partial-interval MS Interval between partial caption attempts in ms\n";
+    std::cout << "                          (default: 500)\n";
 #else
     std::cout << "\n  (Whisper ASR not available - rebuild with -DENABLE_WHISPER=ON)\n";
 #endif
@@ -206,8 +211,10 @@ void print_usage(const char* program_name) {
     std::cout << "  " << program_name << " --transcribe speech.flac --format vtt --language zh\n";
     std::cout << "  " << program_name
               << " --transcribe speech.wav --format json -o transcript.json\n";
+    std::cout << "  " << program_name << " --record -o speech.wav --live-captions -t 60\n";
     std::cout << "  " << program_name
-              << " --record -o speech.wav --rnnoise-vad --transcribe-live -t 60\n";
+              << " --record -o speech.wav --live-captions --partial-interval 300 -t 60\n";
+    std::cout << "  " << program_name << " --record -o speech.wav --live-captions --json -t 60\n";
     std::cout << "  " << program_name << " --transcribe speech.wav -o -\n";
 #endif
 }
@@ -399,7 +406,7 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
 #endif
 #ifdef ENABLE_WHISPER
                  ,
-                 bool transcribe_live = false
+                 bool live_captions = false, int partial_interval_ms = 500
 #endif
 ) {
     using namespace ffvoice;
@@ -442,8 +449,9 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
     std::cerr << "  Output: " << output_file << "\n";
 
 #ifdef ENABLE_WHISPER
-    if (transcribe_live) {
-        std::cerr << "  Real-time transcription: enabled\n";
+    if (live_captions) {
+        std::cerr << "  Live captions: enabled (partial interval: " << partial_interval_ms
+                  << " ms)\n";
     }
 #endif
     std::cerr << "\n";
@@ -473,9 +481,6 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
 
     // Setup audio processing chain
     std::unique_ptr<AudioProcessorChain> processor_chain;
-#ifdef ENABLE_RNNOISE
-    RNNoiseProcessor* rnnoise_ptr = nullptr;  // For VAD access
-#endif
 
     if (has_processing) {
         processor_chain = std::make_unique<AudioProcessorChain>();
@@ -489,9 +494,7 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
         if (enable_rnnoise) {
             RNNoiseConfig config;
             config.enable_vad = rnnoise_vad;
-            auto rnnoise = std::make_unique<RNNoiseProcessor>(config);
-            rnnoise_ptr = rnnoise.get();  // Store pointer for VAD access
-            processor_chain->AddProcessor(std::move(rnnoise));
+            processor_chain->AddProcessor(std::make_unique<RNNoiseProcessor>(config));
         }
 #endif
 
@@ -507,47 +510,59 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
     }
 
 #ifdef ENABLE_WHISPER
-    // Setup real-time transcription (requires RNNoise VAD)
-    std::unique_ptr<WhisperProcessor> whisper_processor;
-    std::unique_ptr<VADSegmenter> vad_segmenter;
-    std::atomic<int> segment_counter{0};
+    // Setup live captioning via LiveCaptioner (worker thread owns all Whisper calls).
+    std::unique_ptr<ffvoice::LiveCaptioner> captioner;
 
-    if (transcribe_live) {
-    #ifdef ENABLE_RNNOISE
-        if (!rnnoise_vad || !rnnoise_ptr) {
-            emit_error(EXIT_BAD_ARGS, "--transcribe-live requires --rnnoise-vad");
-            return EXIT_BAD_ARGS;
-        }
+    if (live_captions) {
+        ffvoice::LiveCaptionerConfig cap_cfg;
+        cap_cfg.whisper.language = "auto";
+        cap_cfg.whisper.print_progress = false;
+        cap_cfg.partial_interval_ms = partial_interval_ms;
+        cap_cfg.sample_rate = sample_rate;
+        cap_cfg.channels = channels;
+        cap_cfg.suppress_whisper_progress = true;
 
-        // Initialize Whisper processor for real-time transcription
-        WhisperConfig whisper_config;
-        whisper_config.language = "auto";
-        whisper_config.print_progress = false;             // Don't print progress for real-time
-        whisper_config.enable_performance_metrics = true;  // Enable performance timing
-        whisper_processor = std::make_unique<WhisperProcessor>(whisper_config);
+        captioner = std::make_unique<ffvoice::LiveCaptioner>(cap_cfg);
 
-        if (!whisper_processor->Initialize()) {
+        // Register the caption callback — called from the worker thread.
+        captioner->SetCallback([](const ffvoice::CaptionEvent& ev) {
+            const std::string type_str =
+                (ev.type == ffvoice::CaptionEventType::Final) ? "final" : "partial";
+
+            if (g_json_mode) {
+                // One NDJSON line per event → stdout (lock-guarded).
+                std::ostringstream oss;
+                oss << "{\"type\":\"" << type_str << "\",\"utterance_id\":" << ev.utterance_id
+                    << ",\"text\":\"" << json_escape(ev.text)
+                    << "\",\"utterance_start_ms\":" << ev.utterance_start_ms
+                    << ",\"utterance_end_ms\":" << ev.utterance_end_ms << "}";
+                emit_json_line(oss.str());
+            } else {
+                // Plain mode: partials overwrite the current line; finals get their own line.
+                std::lock_guard<std::mutex> lock(g_stdout_mutex);
+                if (ev.type == ffvoice::CaptionEventType::Final) {
+                    // Clear any partial that may be on the line, then print final.
+                    std::cout << "\r" << ev.text << "\n" << std::flush;
+                } else {
+                    // Overwrite the current terminal line with the latest partial.
+                    std::cout << "\r" << ev.text << "   " << std::flush;
+                }
+            }
+        });
+
+        if (!captioner->Initialize()) {
             emit_error(EXIT_RUNTIME,
-                       "Failed to initialize Whisper: " + whisper_processor->GetLastError());
+                       "Failed to initialize LiveCaptioner: " + captioner->GetLastError());
             return EXIT_RUNTIME;
         }
 
-        // Initialize VAD segmenter
-        VADSegmenter::Config vad_config;
-        vad_config.speech_threshold = 0.5f;
-        vad_config.min_speech_frames = 30;        // ~0.3s
-        vad_config.min_silence_frames = 50;       // ~0.5s
-        vad_config.max_segment_samples = 480000;  // 10s @48kHz
-        vad_segmenter = std::make_unique<VADSegmenter>(vad_config);
+        if (!captioner->Start()) {
+            emit_error(EXIT_RUNTIME, "Failed to start LiveCaptioner: " + captioner->GetLastError());
+            return EXIT_RUNTIME;
+        }
 
-        std::cerr << "Real-time transcription initialized\n";
-        std::cerr << "  Whisper model: loaded\n";
-        std::cerr << "  VAD segmentation: enabled\n\n";
-    #else
-        emit_error(EXIT_BAD_ARGS, "--transcribe-live requires RNNoise support");
-        std::cerr << "Rebuild with: cmake -DENABLE_RNNOISE=ON -DENABLE_WHISPER=ON\n";
-        return EXIT_BAD_ARGS;
-    #endif
+        std::cerr << "Live captioning initialized (LiveCaptioner engine)\n";
+        std::cerr << "  Partial interval: " << partial_interval_ms << " ms\n\n";
     }
 #endif
 
@@ -595,39 +610,10 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
         }
 
 #ifdef ENABLE_WHISPER
-        // Real-time transcription: VAD segmentation
-        if (transcribe_live && vad_segmenter && whisper_processor) {
-    #ifdef ENABLE_RNNOISE
-            if (rnnoise_ptr) {
-                // Get VAD probability from RNNoise
-                float vad_prob = rnnoise_ptr->GetVADProbability();
-
-                // Process frame with VAD segmenter
-                vad_segmenter->ProcessFrame(
-                    processed_samples, num_samples, vad_prob,
-                    [&](const int16_t* segment_samples, size_t segment_size) {
-                        // Segment callback: transcribe this segment
-                        std::vector<TranscriptionSegment> segments;
-
-                        if (whisper_processor->TranscribeBuffer(segment_samples, segment_size,
-                                                                segments)) {
-                            // Print transcription results
-                            for (const auto& seg : segments) {
-                                int idx = segment_counter++;
-                                if (g_json_mode) {
-                                    std::ostringstream oss;
-                                    oss << "{\"event\":\"segment\",\"index\":" << idx
-                                        << ",\"text\":\"" << json_escape(seg.text) << "\"}";
-                                    emit_json_line(oss.str());
-                                } else {
-                                    std::lock_guard<std::mutex> lock(g_stdout_mutex);
-                                    std::cout << "\n[" << idx << "] " << seg.text << std::flush;
-                                }
-                            }
-                        }
-                    });
-            }
-    #endif
+        // Feed processed audio into LiveCaptioner's lock-free ring buffer.
+        // FeedAudio() is non-blocking and safe to call from the capture callback.
+        if (live_captions && captioner) {
+            captioner->FeedAudio(processed_samples, num_samples);
         }
 #endif
 
@@ -684,6 +670,14 @@ int record_audio(int device_id, int duration, const std::string& output_file, in
     // Stop and cleanup
     capture.Stop();
     capture.Close();
+
+#ifdef ENABLE_WHISPER
+    // Stop LiveCaptioner after capture has stopped so all buffered audio is
+    // flushed and the final caption event is emitted before we exit.
+    if (live_captions && captioner) {
+        captioner->Stop();
+    }
+#endif
 
     if (format == "wav") {
         wav_writer.Close();
@@ -836,7 +830,8 @@ int main(int argc, char* argv[]) {
         bool rnnoise_vad = false;
 #endif
 #ifdef ENABLE_WHISPER
-        bool transcribe_live = false;
+        bool live_captions = false;
+        int partial_interval_ms = 500;
 #endif
 
         // Simple argument parsing
@@ -863,8 +858,9 @@ int main(int argc, char* argv[]) {
             }
 #endif
 #ifdef ENABLE_WHISPER
-            else if (arg == "--transcribe-live") {
-                transcribe_live = true;
+            // --live-captions is the canonical name; --transcribe-live is an alias.
+            else if (arg == "--live-captions" || arg == "--transcribe-live") {
+                live_captions = true;
                 continue;
             }
 #endif
@@ -912,6 +908,13 @@ int main(int argc, char* argv[]) {
                 }
                 enable_highpass = true;
                 ++i;
+#ifdef ENABLE_WHISPER
+            } else if (arg == "--partial-interval") {
+                if (!parse_int_arg(value, arg, partial_interval_ms)) {
+                    return EXIT_BAD_ARGS;
+                }
+                ++i;
+#endif
             } else {
                 emit_error(EXIT_BAD_ARGS, "unknown option: " + arg);
                 std::cerr << "Run '" << fargv[0] << " --help' for usage.\n";
@@ -973,7 +976,7 @@ int main(int argc, char* argv[]) {
 #endif
 #ifdef ENABLE_WHISPER
                             ,
-                            transcribe_live
+                            live_captions, partial_interval_ms
 #endif
         );
     }
