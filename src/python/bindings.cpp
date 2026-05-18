@@ -16,6 +16,9 @@
 #endif
 #include "audio/vad_segmenter.h"
 #include "audio/whisper_processor.h"
+#ifdef ENABLE_WHISPER
+    #include "audio/live_captioner.h"
+#endif
 #include "media/flac_writer.h"
 #include "media/wav_writer.h"
 #include "utils/ring_buffer.h"
@@ -271,6 +274,123 @@ PYBIND11_MODULE(_ffvoice, m) {
         .def("get_vad_probability", &RNNoiseProcessor::GetVADProbability,
              "Get last VAD probability (0.0-1.0)");
 #endif  // ENABLE_RNNOISE
+
+#ifdef ENABLE_WHISPER
+    // ========== Live Captioner ==========
+
+    // CaptionEventType enum
+    py::enum_<CaptionEventType>(m, "CaptionEventType")
+        .value("Partial", CaptionEventType::Partial,
+               "Intermediate caption emitted while speech is ongoing")
+        .value("Final", CaptionEventType::Final,
+               "Final caption emitted after end-of-speech detection")
+        .export_values();
+
+    // CaptionEvent
+    py::class_<CaptionEvent>(m, "CaptionEvent")
+        .def_readonly("type", &CaptionEvent::type, "Partial or Final event type")
+        .def_readonly("text", &CaptionEvent::text, "Transcribed text")
+        .def_readonly("utterance_start_ms", &CaptionEvent::utterance_start_ms,
+                      "Estimated utterance start time in milliseconds")
+        .def_readonly("utterance_end_ms", &CaptionEvent::utterance_end_ms,
+                      "Estimated utterance end time in milliseconds")
+        .def_readonly("confidence", &CaptionEvent::confidence,
+                      "Mean segment confidence (0.0 for Partial; mean for Final)")
+        .def_readonly("utterance_id", &CaptionEvent::utterance_id,
+                      "Monotonically incrementing utterance counter")
+        .def("__repr__", [](const CaptionEvent& ev) {
+            std::string type_str = (ev.type == CaptionEventType::Final) ? "Final" : "Partial";
+            return "<CaptionEvent " + type_str + " id=" + std::to_string(ev.utterance_id) + " '" +
+                   ev.text + "'>";
+        });
+
+    // LiveCaptionerConfig
+    py::class_<LiveCaptionerConfig>(m, "LiveCaptionerConfig")
+        .def(py::init<>())
+        .def_readwrite("whisper", &LiveCaptionerConfig::whisper,
+                       "Whisper ASR configuration (model path, language, threads, …)")
+        .def_readwrite("vad", &LiveCaptionerConfig::vad,
+                       "VAD segmentation configuration (thresholds, min frames, …)")
+        .def_readwrite("partial_interval_ms", &LiveCaptionerConfig::partial_interval_ms,
+                       "Interval between Partial caption attempts while in speech (ms)")
+        .def_readwrite("min_samples_for_partial", &LiveCaptionerConfig::min_samples_for_partial,
+                       "Minimum accumulated samples before a Partial is emitted")
+        .def_readwrite("ring_buffer_capacity", &LiveCaptionerConfig::ring_buffer_capacity,
+                       "Ring buffer capacity in samples (default ≈ 3 s at 48 kHz)")
+        .def_readwrite("sample_rate", &LiveCaptionerConfig::sample_rate,
+                       "Input audio sample rate (Hz)")
+        .def_readwrite("channels", &LiveCaptionerConfig::channels,
+                       "Input audio channel count (1 = mono, 2 = stereo)")
+        .def_readwrite("suppress_whisper_progress", &LiveCaptionerConfig::suppress_whisper_progress,
+                       "When true, Whisper's built-in progress messages are silenced");
+
+    // LiveCaptioner
+    py::class_<LiveCaptioner>(m, "LiveCaptioner")
+        .def(py::init<const LiveCaptionerConfig&>(), py::arg("config") = LiveCaptionerConfig(),
+             "Construct a LiveCaptioner with the given configuration")
+        .def("initialize", &LiveCaptioner::Initialize,
+             "Load the Whisper model and prepare internal state; must be called before start()")
+        .def(
+            "set_callback",
+            [](LiveCaptioner& self, py::function callback) {
+                // Create a persistent copy of the callback so it outlives this
+                // binding call — the worker thread will invoke it later.
+                auto persistent_callback = std::make_shared<py::function>(callback);
+
+                auto cpp_callback = [persistent_callback](const CaptionEvent& ev) {
+                    // Acquire GIL before calling Python from the worker thread
+                    py::gil_scoped_acquire acquire;
+
+                    try {
+                        (*persistent_callback)(ev);
+                    } catch (const std::exception& e) {
+                        py::print("Error in caption callback:", e.what());
+                    }
+                };
+
+                self.SetCallback(cpp_callback);
+            },
+            py::arg("callback"),
+            "Register the Python callable invoked on each CaptionEvent (called from worker thread)")
+        .def("start", &LiveCaptioner::Start, "Start the worker thread and begin processing audio")
+        .def("stop", &LiveCaptioner::Stop,
+             "Stop the worker thread and flush any buffered audio; blocks until joined")
+        .def(
+            "feed_audio",
+            [](LiveCaptioner& self, py::array_t<int16_t> audio_array) {
+                // Get buffer info
+                py::buffer_info buf = audio_array.request();
+
+                // Validate buffer pointer
+                if (!buf.ptr) {
+                    throw std::runtime_error("Audio array has null data pointer");
+                }
+
+                // Validate buffer size
+                if (buf.size == 0) {
+                    throw std::runtime_error("Audio array is empty");
+                }
+
+                // Validate dimensions (should be 1D array)
+                if (buf.ndim != 1) {
+                    throw std::runtime_error("Audio array must be 1-dimensional (got " +
+                                             std::to_string(buf.ndim) + " dimensions)");
+                }
+
+                const int16_t* samples = static_cast<const int16_t*>(buf.ptr);
+                size_t count = static_cast<size_t>(buf.shape[0]);
+
+                // Release GIL during the lock-free ring buffer write
+                py::gil_scoped_release release;
+                return self.FeedAudio(samples, count);
+            },
+            py::arg("audio_array"),
+            "Feed raw int16 PCM samples into the ring buffer; returns samples actually written")
+        .def("is_running", &LiveCaptioner::IsRunning,
+             "True between a successful start() and stop()")
+        .def("get_last_error", &LiveCaptioner::GetLastError,
+             "Return the last error message (empty string if no error)");
+#endif  // ENABLE_WHISPER
 
     // ========== VAD Segmenter ==========
 
