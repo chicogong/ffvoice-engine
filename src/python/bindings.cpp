@@ -54,6 +54,8 @@ PYBIND11_MODULE(_ffvoice, m) {
         .def_readonly("end_ms", &TranscriptionSegment::end_ms, "End time in milliseconds")
         .def_readonly("text", &TranscriptionSegment::text, "Transcribed text")
         .def_readonly("confidence", &TranscriptionSegment::confidence, "Confidence score (0.0-1.0)")
+        .def_readonly("speaker_id", &TranscriptionSegment::speaker_id,
+                      "Speaker index, 0-based; -1 = unknown / diarization not run")
         .def_readonly("words", &TranscriptionSegment::words,
                       "Per-word timestamps (empty unless word_timestamps was enabled)")
         .def("__repr__", [](const TranscriptionSegment& seg) {

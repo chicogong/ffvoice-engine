@@ -20,6 +20,10 @@ option(BUILD_EXAMPLES "Build examples" ON)
 option(BUILD_PYTHON "Build Python bindings" OFF)
 option(ENABLE_RNNOISE "Enable RNNoise deep learning noise suppression" OFF)
 option(ENABLE_WHISPER "Enable Whisper ASR (speech recognition)" OFF)
+option(ENABLE_DIARIZATION "Enable speaker diarization (sherpa-onnx + ONNX Runtime)" OFF)
+
+# Pinned ONNX Runtime version for speaker diarization (prebuilt, not built from source)
+set(ORT_VERSION "1.20.1" CACHE STRING "ONNX Runtime version used for speaker diarization")
 
 # Propagate the project version to the C++ sources (single source of truth)
 add_compile_definitions(FFVOICE_VERSION="${PROJECT_VERSION}")
@@ -238,6 +242,172 @@ else()
     message(STATUS "Whisper ASR: Disabled (use -DENABLE_WHISPER=ON to enable)")
 endif()
 
+# Speaker Diarization (conditional - sherpa-onnx + prebuilt ONNX Runtime)
+# Not supported on Windows: sherpa-onnx links a static ONNX Runtime that
+# conflicts with the MSVC C runtime. Diarization is Windows-unsupported for now.
+if(ENABLE_DIARIZATION)
+    if(MSVC)
+        message(WARNING "Speaker diarization is not supported on Windows (sherpa-onnx's static ONNX Runtime conflicts with the MSVC CRT)")
+        message(STATUS "Speaker Diarization: Disabled on Windows")
+        set(ENABLE_DIARIZATION OFF CACHE BOOL "" FORCE)
+    elseif(NOT ENABLE_WHISPER)
+        message(FATAL_ERROR "ENABLE_DIARIZATION requires ENABLE_WHISPER=ON (shared ASR/ggml pipeline). Re-run cmake with -DENABLE_WHISPER=ON.")
+    else()
+        message(STATUS "Speaker Diarization: Enabled")
+
+        include(FetchContent)
+
+        # --- 1. Prebuilt ONNX Runtime (downloaded, NOT built from source) -----
+        # Select the platform tarball from the official ONNX Runtime release.
+        if(APPLE)
+            if(CMAKE_OSX_ARCHITECTURES MATCHES "arm64" OR
+               (NOT CMAKE_OSX_ARCHITECTURES AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64"))
+                set(ORT_PLATFORM "osx-arm64")
+            else()
+                set(ORT_PLATFORM "osx-x86_64")
+            endif()
+        elseif(UNIX)
+            set(ORT_PLATFORM "linux-x64")
+        else()
+            message(FATAL_ERROR "Speaker diarization: unsupported platform for prebuilt ONNX Runtime")
+        endif()
+
+        set(ORT_ARCHIVE "onnxruntime-${ORT_PLATFORM}-${ORT_VERSION}.tgz")
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${ORT_ARCHIVE}")
+
+        message(STATUS "Fetching prebuilt ONNX Runtime ${ORT_VERSION} (${ORT_PLATFORM})...")
+        message(STATUS "  URL: ${ORT_URL}")
+
+        FetchContent_Declare(
+            onnxruntime_prebuilt
+            URL ${ORT_URL}
+        )
+        FetchContent_MakeAvailable(onnxruntime_prebuilt)
+
+        # The tarball extracts to <root>/{include,lib}. Point sherpa-onnx at it.
+        # sherpa-onnx reads these as environment variables (see its
+        # cmake/onnxruntime.cmake) to skip its own ORT download.
+        set(SHERPA_ONNXRUNTIME_INCLUDE_DIR "${onnxruntime_prebuilt_SOURCE_DIR}/include"
+            CACHE PATH "ONNX Runtime headers for sherpa-onnx" FORCE)
+        set(SHERPA_ONNXRUNTIME_LIB_DIR "${onnxruntime_prebuilt_SOURCE_DIR}/lib"
+            CACHE PATH "ONNX Runtime libraries for sherpa-onnx" FORCE)
+        set(ENV{SHERPA_ONNXRUNTIME_INCLUDE_DIR} "${SHERPA_ONNXRUNTIME_INCLUDE_DIR}")
+        set(ENV{SHERPA_ONNXRUNTIME_LIB_DIR} "${SHERPA_ONNXRUNTIME_LIB_DIR}")
+
+        message(STATUS "  ONNX Runtime include dir: ${SHERPA_ONNXRUNTIME_INCLUDE_DIR}")
+        message(STATUS "  ONNX Runtime lib dir: ${SHERPA_ONNXRUNTIME_LIB_DIR}")
+
+        # --- 2. sherpa-onnx (speaker-diarization parts only) ------------------
+        # Restrict the build to the speaker-diarization code path: no binaries,
+        # no websocket server, no TTS, no python, no portaudio.
+        set(SHERPA_ONNX_ENABLE_SPEAKER_DIARIZATION ON  CACHE BOOL "" FORCE)
+        set(SHERPA_ONNX_ENABLE_BINARY             OFF CACHE BOOL "" FORCE)
+        set(SHERPA_ONNX_ENABLE_WEBSOCKET          OFF CACHE BOOL "" FORCE)
+        set(SHERPA_ONNX_ENABLE_TTS                OFF CACHE BOOL "" FORCE)
+        set(SHERPA_ONNX_ENABLE_PYTHON             OFF CACHE BOOL "" FORCE)
+        set(SHERPA_ONNX_ENABLE_PORTAUDIO          OFF CACHE BOOL "" FORCE)
+        set(SHERPA_ONNX_ENABLE_TESTS              OFF CACHE BOOL "" FORCE)
+        # C API headers/library so a later PR can #include "sherpa-onnx/c-api/c-api.h".
+        set(SHERPA_ONNX_ENABLE_C_API              ON  CACHE BOOL "" FORCE)
+        set(SHERPA_ONNX_BUILD_C_API_EXAMPLES      OFF CACHE BOOL "" FORCE)
+        # Use the prebuilt ONNX Runtime fetched above instead of letting
+        # sherpa-onnx download its own copy.
+        set(SHERPA_ONNX_USE_PRE_INSTALLED_ONNXRUNTIME_IF_AVAILABLE ON CACHE BOOL "" FORCE)
+
+        message(STATUS "Fetching sherpa-onnx from GitHub...")
+
+        # sherpa-onnx forces C++20 globally, but one of its transitive,
+        # unconditionally-included deps (simple-sentencepiece v0.7) still uses
+        # std::result_of, which libc++ removed in C++20. Re-enable the removed
+        # type traits for the dependency build via the documented libc++ escape
+        # hatch. Applied here (before FetchContent_MakeAvailable) so it reaches
+        # sherpa-onnx's sub-build targets; only affects the diarization build.
+        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            add_compile_definitions(_LIBCPP_ENABLE_CXX20_REMOVED_TYPE_TRAITS)
+        endif()
+
+        FetchContent_Declare(
+            sherpa_onnx
+            GIT_REPOSITORY https://github.com/k2-fsa/sherpa-onnx.git
+            GIT_TAG v1.12.40
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(sherpa_onnx)
+
+        message(STATUS "sherpa-onnx fetched successfully")
+        message(STATUS "  Source dir: ${sherpa_onnx_SOURCE_DIR}")
+
+        # --- 3. Diarization model files ---------------------------------------
+        # Downloaded (only if absent) from the sherpa-onnx release tags
+        # "speaker-segmentation-models" and "speaker-recongition-models".
+        # NOTE: the embedding-models tag is literally spelled "recongition"
+        # (a known upstream typo) - do not "fix" it.
+        set(DIARIZATION_MODEL_DIR "${CMAKE_BINARY_DIR}/models/diarization")
+        file(MAKE_DIRECTORY ${DIARIZATION_MODEL_DIR})
+
+        # Pyannote segmentation model (~6MB, distributed as a .tar.bz2 archive).
+        set(DIARIZATION_SEG_ARCHIVE "${DIARIZATION_MODEL_DIR}/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2")
+        set(DIARIZATION_SEG_DIR "${DIARIZATION_MODEL_DIR}/sherpa-onnx-pyannote-segmentation-3-0")
+        set(DIARIZATION_SEGMENTATION_MODEL "${DIARIZATION_SEG_DIR}/model.onnx")
+        set(DIARIZATION_SEG_URL "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2")
+
+        if(NOT EXISTS ${DIARIZATION_SEGMENTATION_MODEL})
+            message(STATUS "Downloading pyannote segmentation model...")
+            file(DOWNLOAD
+                "${DIARIZATION_SEG_URL}"
+                "${DIARIZATION_SEG_ARCHIVE}"
+                SHOW_PROGRESS
+                STATUS DIARIZATION_SEG_STATUS
+            )
+            list(GET DIARIZATION_SEG_STATUS 0 DIARIZATION_SEG_CODE)
+            if(NOT DIARIZATION_SEG_CODE EQUAL 0)
+                message(FATAL_ERROR "Failed to download diarization segmentation model from ${DIARIZATION_SEG_URL}")
+            endif()
+            execute_process(
+                COMMAND ${CMAKE_COMMAND} -E tar xjf "${DIARIZATION_SEG_ARCHIVE}"
+                WORKING_DIRECTORY "${DIARIZATION_MODEL_DIR}"
+                RESULT_VARIABLE DIARIZATION_SEG_EXTRACT
+            )
+            if(NOT DIARIZATION_SEG_EXTRACT EQUAL 0)
+                message(FATAL_ERROR "Failed to extract ${DIARIZATION_SEG_ARCHIVE}")
+            endif()
+            message(STATUS "Segmentation model ready: ${DIARIZATION_SEGMENTATION_MODEL}")
+        else()
+            message(STATUS "Segmentation model already exists at ${DIARIZATION_SEGMENTATION_MODEL}")
+        endif()
+
+        # Speaker-embedding model (a single .onnx file - no archive).
+        set(DIARIZATION_EMBEDDING_MODEL "${DIARIZATION_MODEL_DIR}/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx")
+        set(DIARIZATION_EMB_URL "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx")
+
+        if(NOT EXISTS ${DIARIZATION_EMBEDDING_MODEL})
+            message(STATUS "Downloading speaker embedding model...")
+            file(DOWNLOAD
+                "${DIARIZATION_EMB_URL}"
+                "${DIARIZATION_EMBEDDING_MODEL}"
+                SHOW_PROGRESS
+                STATUS DIARIZATION_EMB_STATUS
+            )
+            list(GET DIARIZATION_EMB_STATUS 0 DIARIZATION_EMB_CODE)
+            if(NOT DIARIZATION_EMB_CODE EQUAL 0)
+                message(FATAL_ERROR "Failed to download diarization embedding model from ${DIARIZATION_EMB_URL}")
+            endif()
+            message(STATUS "Embedding model ready: ${DIARIZATION_EMBEDDING_MODEL}")
+        else()
+            message(STATUS "Embedding model already exists at ${DIARIZATION_EMBEDDING_MODEL}")
+        endif()
+
+        # --- 4. Compile definitions for the (future) Diarizer class -----------
+        add_compile_definitions(
+            ENABLE_DIARIZATION
+            DIARIZATION_SEGMENTATION_MODEL_PATH="${DIARIZATION_SEGMENTATION_MODEL}"
+            DIARIZATION_EMBEDDING_MODEL_PATH="${DIARIZATION_EMBEDDING_MODEL}"
+        )
+    endif()  # End of if(MSVC)/elseif(NOT ENABLE_WHISPER)/else block
+else()
+    message(STATUS "Speaker Diarization: Disabled (use -DENABLE_DIARIZATION=ON to enable)")
+endif()
+
 # Python bindings (optional)
 if(BUILD_PYTHON)
     message(STATUS "Python bindings: Enabled")
@@ -315,6 +485,21 @@ if(ENABLE_WHISPER)
     )
     target_include_directories(ffvoice-core
         PUBLIC ${whisper_SOURCE_DIR}
+    )
+endif()
+
+if(ENABLE_DIARIZATION)
+    # sherpa-onnx C API target. It transitively brings in sherpa-onnx-core and
+    # the prebuilt ONNX Runtime, and exposes the "sherpa-onnx/c-api/c-api.h"
+    # include path so a later PR can write the Diarizer class.
+    target_link_libraries(ffvoice-core
+        PUBLIC sherpa-onnx-c-api
+    )
+    target_include_directories(ffvoice-core
+        PUBLIC ${sherpa_onnx_SOURCE_DIR}
+    )
+    target_link_directories(ffvoice-core
+        PUBLIC ${SHERPA_ONNXRUNTIME_LIB_DIR}
     )
 endif()
 

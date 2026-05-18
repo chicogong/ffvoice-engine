@@ -80,6 +80,7 @@ def _segment_to_dict(seg: Any, include_words: bool) -> Dict[str, Any]:
         "end_ms": seg.end_ms,
         "text": seg.text,
         "confidence": seg.confidence,
+        "speaker_id": seg.speaker_id,
     }
     if include_words and seg.words:
         d["words"] = [
