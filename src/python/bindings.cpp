@@ -11,6 +11,7 @@
 // Core ffvoice headers
 #include "audio/audio_capture_device.h"
 #include "audio/audio_mixer.h"
+#include "audio/diarizer.h"
 #ifdef ENABLE_RNNOISE
     #include "audio/rnnoise_processor.h"
 #endif
@@ -62,6 +63,34 @@ PYBIND11_MODULE(_ffvoice, m) {
             return "<TranscriptionSegment [" + std::to_string(seg.start_ms) + " -> " +
                    std::to_string(seg.end_ms) + "] '" + seg.text + "'>";
         });
+
+    // ========== Speaker Diarization ==========
+
+    // SpeakerSegment — always available (compiled regardless of ENABLE_DIARIZATION)
+    py::class_<SpeakerSegment>(m, "SpeakerSegment")
+        .def(py::init<>())
+        .def(py::init<int64_t, int64_t, int32_t>(), py::arg("start_ms"), py::arg("end_ms"),
+             py::arg("speaker_id"))
+        .def_readonly("start_ms", &SpeakerSegment::start_ms, "Segment start time in milliseconds")
+        .def_readonly("end_ms", &SpeakerSegment::end_ms, "Segment end time in milliseconds")
+        .def_readonly("speaker_id", &SpeakerSegment::speaker_id,
+                      "Speaker index, 0-based; -1 = unknown")
+        .def("__repr__", [](const SpeakerSegment& seg) {
+            return "<SpeakerSegment [" + std::to_string(seg.start_ms) + " -> " +
+                   std::to_string(seg.end_ms) + "] speaker=" + std::to_string(seg.speaker_id) + ">";
+        });
+
+    // merge_into_segments — always available
+    m.def(
+        "merge_into_segments",
+        [](std::vector<TranscriptionSegment>& segments,
+           const std::vector<SpeakerSegment>& speakers) {
+            MergeIntoSegments(segments, speakers);
+            return segments;
+        },
+        py::arg("segments"), py::arg("speakers"),
+        "Assign a speaker_id to each TranscriptionSegment via temporal overlap with the "
+        "given SpeakerSegments; returns the annotated list of segments");
 
     // ========== Whisper ASR ==========
 
@@ -394,6 +423,58 @@ PYBIND11_MODULE(_ffvoice, m) {
              "Return the last error message (empty string if no error)");
 #endif  // ENABLE_WHISPER
 
+#ifdef ENABLE_DIARIZATION
+    // ========== Diarizer ==========
+
+    // DiarizerConfig
+    py::class_<DiarizerConfig>(m, "DiarizerConfig")
+        .def(py::init<>())
+        .def_readwrite("segmentation_model_path", &DiarizerConfig::segmentation_model_path,
+                       "Path to the pyannote speaker-segmentation model (.onnx)")
+        .def_readwrite("embedding_model_path", &DiarizerConfig::embedding_model_path,
+                       "Path to the speaker-embedding model (.onnx)")
+        .def_readwrite("num_speakers", &DiarizerConfig::num_speakers,
+                       "Expected number of speakers; -1 = auto-detect via cluster_threshold")
+        .def_readwrite("cluster_threshold", &DiarizerConfig::cluster_threshold,
+                       "Clustering distance threshold (used only when num_speakers <= 0)")
+        .def_readwrite("num_threads", &DiarizerConfig::num_threads,
+                       "Inference threads for the segmentation and embedding models");
+
+    // Diarizer
+    py::class_<Diarizer>(m, "Diarizer")
+        .def(py::init<const DiarizerConfig&>(), py::arg("config") = DiarizerConfig(),
+             "Construct a Diarizer with the given configuration")
+        .def("init", &Diarizer::Init,
+             "Initialize the diarizer and load the models; returns True on success")
+        .def("is_initialized", &Diarizer::IsInitialized,
+             "Return True once init() has completed successfully")
+        .def(
+            "diarize",
+            [](Diarizer& self, py::array_t<float> audio_array, int sample_rate) {
+                py::buffer_info buf = audio_array.request();
+
+                // Validate dimensions (should be 1D array)
+                if (buf.ndim != 1) {
+                    throw std::runtime_error("Audio array must be 1-dimensional (got " +
+                                             std::to_string(buf.ndim) + " dimensions)");
+                }
+
+                // Copy samples to a std::vector
+                const float* data = static_cast<const float*>(buf.ptr);
+                std::vector<float> samples(data, data + buf.shape[0]);
+
+                // Release the GIL during diarization (no Python access inside)
+                py::gil_scoped_release release;
+                return self.Diarize(samples, sample_rate);
+            },
+            py::arg("audio_array"), py::arg("sample_rate") = 16000,
+            "Run speaker diarization on a 1-D float32 NumPy array of mono PCM samples")
+        .def("get_last_error", &Diarizer::GetLastError,
+             "Return the last error message (empty string if no error)")
+        .def("get_expected_sample_rate", &Diarizer::GetExpectedSampleRate,
+             "Return the input sample rate the models expect (Hz)");
+#endif  // ENABLE_DIARIZATION
+
     // ========== VAD Segmenter ==========
 
     // VAD Sensitivity enum
@@ -693,4 +774,12 @@ PYBIND11_MODULE(_ffvoice, m) {
             },
             py::arg("count"), "Pop up to `count` values; returns them as a 1-D int16 ndarray")
         .def("clear", &RingBuffer<int16_t>::clear, "Reset the buffer to empty");
+
+    // ========== Build-feature flags ==========
+
+#ifdef ENABLE_DIARIZATION
+    m.attr("HAS_DIARIZATION") = true;
+#else
+    m.attr("HAS_DIARIZATION") = false;
+#endif
 }
