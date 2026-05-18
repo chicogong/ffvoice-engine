@@ -49,6 +49,7 @@ set(TEST_SOURCES
     unit/test_word_grouper.cpp
     unit/test_subtitle_generator.cpp
     unit/test_live_captioner.cpp
+    unit/test_diarizer.cpp
     # Add more test files as they are created
     # integration/test_audio_pipeline.cpp
 )
