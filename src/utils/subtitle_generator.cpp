@@ -13,6 +13,27 @@
 
 namespace ffvoice {
 
+std::string SubtitleGenerator::GenerateString(const std::vector<TranscriptionSegment>& segments,
+                                              Format format) {
+    if (segments.empty()) {
+        return {};
+    }
+
+    switch (format) {
+        case Format::PlainText:
+            return GeneratePlainText(segments);
+        case Format::SRT:
+            return GenerateSRT(segments);
+        case Format::VTT:
+            return GenerateVTT(segments);
+        case Format::JSON:
+            return GenerateJSON(segments);
+        default:
+            LOG_ERROR("Unknown subtitle format");
+            return {};
+    }
+}
+
 bool SubtitleGenerator::Generate(const std::vector<TranscriptionSegment>& segments,
                                  const std::string& output_file, Format format) {
     if (segments.empty()) {
@@ -21,23 +42,10 @@ bool SubtitleGenerator::Generate(const std::vector<TranscriptionSegment>& segmen
     }
 
     // Generate formatted content based on format
-    std::string content;
-    switch (format) {
-        case Format::PlainText:
-            content = GeneratePlainText(segments);
-            break;
-        case Format::SRT:
-            content = GenerateSRT(segments);
-            break;
-        case Format::VTT:
-            content = GenerateVTT(segments);
-            break;
-        case Format::JSON:
-            content = GenerateJSON(segments);
-            break;
-        default:
-            LOG_ERROR("Unknown subtitle format");
-            return false;
+    std::string content = GenerateString(segments, format);
+    if (content.empty()) {
+        // GenerateString already logged the error for unknown format
+        return false;
     }
 
     // Write to file

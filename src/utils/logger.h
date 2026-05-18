@@ -8,7 +8,7 @@
  * log_warning are available for callers that already hold a std::string.
  *
  * Output destinations:
- *   LOG_INFO    -> stdout
+ *   LOG_INFO    -> stderr
  *   LOG_WARNING -> stderr
  *   LOG_ERROR   -> stderr
  */

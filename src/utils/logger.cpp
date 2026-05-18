@@ -10,7 +10,7 @@
 namespace ffvoice {
 
 void log_info(const std::string& message) {
-    std::cout << "[INFO] " << message << std::endl;
+    std::cerr << "[INFO] " << message << std::endl;
 }
 
 void log_warning(const std::string& message) {

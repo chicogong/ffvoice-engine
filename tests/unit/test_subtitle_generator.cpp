@@ -262,4 +262,82 @@ TEST_F(SubtitleGeneratorTest, PlainText_ContainsOnlyTextNoTimecodes) {
     EXPECT_FALSE(Contains(out, "-->"));
 }
 
+// ============================================================================
+// GenerateString — matches Generate() file output for each format
+// ============================================================================
+
+TEST_F(SubtitleGeneratorTest, GenerateString_EmptySegments_ReturnsEmptyString) {
+    std::vector<TranscriptionSegment> empty;
+    EXPECT_TRUE(
+        SubtitleGenerator::GenerateString(empty, SubtitleGenerator::Format::PlainText).empty());
+    EXPECT_TRUE(SubtitleGenerator::GenerateString(empty, SubtitleGenerator::Format::SRT).empty());
+    EXPECT_TRUE(SubtitleGenerator::GenerateString(empty, SubtitleGenerator::Format::VTT).empty());
+    EXPECT_TRUE(SubtitleGenerator::GenerateString(empty, SubtitleGenerator::Format::JSON).empty());
+}
+
+TEST_F(SubtitleGeneratorTest, GenerateString_PlainText_MatchesFile) {
+    auto segments = SampleSegments();
+
+    // Write via Generate() and read back
+    ASSERT_TRUE(
+        SubtitleGenerator::Generate(segments, temp_path_, SubtitleGenerator::Format::PlainText));
+    const std::string file_content = ReadFile();
+
+    // GenerateString should produce identical content
+    const std::string str_content =
+        SubtitleGenerator::GenerateString(segments, SubtitleGenerator::Format::PlainText);
+
+    EXPECT_EQ(file_content, str_content);
+    EXPECT_FALSE(str_content.empty());
+}
+
+TEST_F(SubtitleGeneratorTest, GenerateString_SRT_MatchesFile) {
+    auto segments = SampleSegments();
+
+    ASSERT_TRUE(SubtitleGenerator::Generate(segments, temp_path_, SubtitleGenerator::Format::SRT));
+    const std::string file_content = ReadFile();
+
+    const std::string str_content =
+        SubtitleGenerator::GenerateString(segments, SubtitleGenerator::Format::SRT);
+
+    EXPECT_EQ(file_content, str_content);
+    EXPECT_FALSE(str_content.empty());
+}
+
+TEST_F(SubtitleGeneratorTest, GenerateString_VTT_MatchesFile) {
+    auto segments = SampleSegments();
+
+    ASSERT_TRUE(SubtitleGenerator::Generate(segments, temp_path_, SubtitleGenerator::Format::VTT));
+    const std::string file_content = ReadFile();
+
+    const std::string str_content =
+        SubtitleGenerator::GenerateString(segments, SubtitleGenerator::Format::VTT);
+
+    EXPECT_EQ(file_content, str_content);
+    EXPECT_FALSE(str_content.empty());
+}
+
+TEST_F(SubtitleGeneratorTest, GenerateString_JSON_MatchesFile) {
+    auto segments = SampleSegments();
+
+    ASSERT_TRUE(SubtitleGenerator::Generate(segments, temp_path_, SubtitleGenerator::Format::JSON));
+    const std::string file_content = ReadFile();
+
+    const std::string str_content =
+        SubtitleGenerator::GenerateString(segments, SubtitleGenerator::Format::JSON);
+
+    EXPECT_EQ(file_content, str_content);
+    EXPECT_FALSE(str_content.empty());
+}
+
+TEST_F(SubtitleGeneratorTest, GenerateString_SingleSegment_ContainsText) {
+    std::vector<TranscriptionSegment> segments;
+    segments.emplace_back(0, 1000, "Hello from GenerateString", 0.90f);
+
+    const std::string result =
+        SubtitleGenerator::GenerateString(segments, SubtitleGenerator::Format::PlainText);
+
+    EXPECT_TRUE(Contains(result, "Hello from GenerateString"));
+}
+
 #endif  // ENABLE_WHISPER

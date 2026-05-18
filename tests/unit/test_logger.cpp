@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 
+#include <iostream>
+#include <sstream>
 #include <string>
 
 using namespace ffvoice;
@@ -172,4 +174,88 @@ TEST_F(LoggerTest, ThreadSafety_SingleThread) {
         LOG_ERROR("Thread safety error %d", i);
     }
     EXPECT_TRUE(true);
+}
+
+// =============================================================================
+// Stream Destination Tests — assert all log levels go to STDERR, not STDOUT
+// =============================================================================
+
+// Helper RAII guard that redirects a stream to a local ostringstream for the
+// lifetime of the guard, then restores the original rdbuf on destruction.
+class StreamCapture {
+public:
+    explicit StreamCapture(std::ostream& stream)
+        : stream_(stream), original_(stream.rdbuf(captured_.rdbuf())) {
+    }
+    ~StreamCapture() {
+        stream_.rdbuf(original_);
+    }
+    std::string str() const {
+        return captured_.str();
+    }
+
+private:
+    std::ostream& stream_;
+    std::ostringstream captured_;
+    std::streambuf* original_;
+};
+
+TEST_F(LoggerTest, LogInfo_GoesToStderr_NotStdout) {
+    StreamCapture out(std::cout);
+    StreamCapture err(std::cerr);
+
+    log_info("info destination check");
+
+    // Must appear on stderr
+    EXPECT_NE(std::string::npos, err.str().find("info destination check"))
+        << "log_info() did not write to stderr";
+    // Must NOT appear on stdout
+    EXPECT_EQ(std::string::npos, out.str().find("info destination check"))
+        << "log_info() incorrectly wrote to stdout";
+}
+
+TEST_F(LoggerTest, LogWarning_GoesToStderr_NotStdout) {
+    StreamCapture out(std::cout);
+    StreamCapture err(std::cerr);
+
+    log_warning("warning destination check");
+
+    EXPECT_NE(std::string::npos, err.str().find("warning destination check"))
+        << "log_warning() did not write to stderr";
+    EXPECT_EQ(std::string::npos, out.str().find("warning destination check"))
+        << "log_warning() incorrectly wrote to stdout";
+}
+
+TEST_F(LoggerTest, LogError_GoesToStderr_NotStdout) {
+    StreamCapture out(std::cout);
+    StreamCapture err(std::cerr);
+
+    log_error("error destination check");
+
+    EXPECT_NE(std::string::npos, err.str().find("error destination check"))
+        << "log_error() did not write to stderr";
+    EXPECT_EQ(std::string::npos, out.str().find("error destination check"))
+        << "log_error() incorrectly wrote to stdout";
+}
+
+TEST_F(LoggerTest, AllLevels_GoesToStderr_WithPrefixes) {
+    StreamCapture out(std::cout);
+    StreamCapture err(std::cerr);
+
+    log_info("prefix_info");
+    log_warning("prefix_warning");
+    log_error("prefix_error");
+
+    const std::string captured = err.str();
+
+    // Each message should appear with the right prefix
+    EXPECT_NE(std::string::npos, captured.find("[INFO]"))
+        << "log_info() prefix [INFO] missing from stderr";
+    EXPECT_NE(std::string::npos, captured.find("[WARNING]"))
+        << "log_warning() prefix [WARNING] missing from stderr";
+    EXPECT_NE(std::string::npos, captured.find("[ERROR]"))
+        << "log_error() prefix [ERROR] missing from stderr";
+
+    // stdout must be completely empty
+    EXPECT_TRUE(out.str().empty()) << "Unexpected stdout output: " << out.str();
 }

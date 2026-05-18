@@ -64,6 +64,20 @@ public:
     static bool Generate(const std::vector<TranscriptionSegment>& segments,
                          const std::string& output_file, Format format);
 
+    /**
+     * @brief Generate subtitle/transcript content as a string
+     *
+     * Dispatches to the same private generators as Generate() but returns the
+     * formatted content directly instead of writing to a file.  Returns an
+     * empty string when @p segments is empty.
+     *
+     * @param segments Transcription segments from Whisper
+     * @param format   Output format
+     * @return Formatted content string (empty when segments is empty)
+     */
+    static std::string GenerateString(const std::vector<TranscriptionSegment>& segments,
+                                      Format format);
+
 private:
     /**
      * @brief Format timestamp for SRT format (HH:MM:SS,mmm)
