@@ -158,7 +158,7 @@ setup(
         "bdist_wheel": bdist_wheel,
     } if bdist_wheel else {"build_ext": CMakeBuild},
     zip_safe=False,
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
@@ -166,7 +166,6 @@ setup(
         "Topic :: Multimedia :: Sound/Audio :: Speech",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",

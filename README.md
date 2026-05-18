@@ -348,7 +348,7 @@ pip install .
 **重要说明**:
 - **Apple Silicon 用户**: 直接使用 `pip install ffvoice` 即可，性能最佳
 - **Windows 用户**: 现已支持 Windows x86_64 预编译 wheels，直接使用 `pip install ffvoice` 即可
-  - 支持 Python 3.9-3.12
+  - 支持 Python 3.10-3.12
   - 自动包含所有必需的依赖（无需手动安装 FFmpeg 等）
   - **注意**: Windows 版本禁用了 RNNoise 降噪（MSVC 不支持 VLA），其他功能完全可用
 - **Intel Mac 用户**: PyPI wheel 不兼容，需要从源码编译:
