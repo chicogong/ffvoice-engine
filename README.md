@@ -3,7 +3,6 @@
 <!-- Build & CI Status -->
 [![CI](https://github.com/chicogong/ffvoice-engine/workflows/CI/badge.svg)](https://github.com/chicogong/ffvoice-engine/actions/workflows/ci.yml)
 [![Release](https://github.com/chicogong/ffvoice-engine/workflows/Release/badge.svg)](https://github.com/chicogong/ffvoice-engine/actions/workflows/release.yml)
-[![codecov](https://codecov.io/gh/chicogong/ffvoice-engine/branch/master/graph/badge.svg)](https://codecov.io/gh/chicogong/ffvoice-engine)
 
 <!-- License & Language -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -482,55 +481,20 @@ ffvoice-engine/
 
 ## 🛣️ 路线图
 
-### Milestone 1: 基础录制 (✨ 97% 完成)
-- [x] WAV 文件写入（手写 RIFF 格式）
-- [x] FLAC 无损压缩（libFLAC）
-- [x] 音频采集（PortAudio 集成）
-- [x] 音频信号生成器（测试用）
-- [x] 音频处理框架（音量归一化 + 高通滤波）
-- [x] CLI 完整功能（设备、格式、参数）
-- [x] 单元测试覆盖（270 个测试用例，全部通过）
+### 已完成 (Milestone 1–5)
 
-### Milestone 2: 音频处理增强 (✨ 100% 完成)
-- [x] RNNoise 降噪 (深度学习)
-- [x] 实时处理管道（处理器链）
-
-### Milestone 3: 离线语音识别 (✨ 100% 完成)
-- [x] whisper.cpp 集成（CMake FetchContent）
-- [x] Whisper Tiny 模型自动下载（39MB）
-- [x] 音频格式转换（WAV/FLAC → 16kHz float mono）
-- [x] 离线转写功能（TranscribeFile）
-- [x] 纯文本输出
-- [x] SRT 字幕生成
-- [x] VTT 字幕生成
-- [x] CLI 参数集成（--transcribe, --format, --language）
-- [x] 性能优化（5-75x realtime）
-
-### Milestone 4: 实时语音识别 (✨ 100% 完成)
-- [x] VADSegmenter 实现（基于 VAD 的智能分段）
-- [x] RNNoiseProcessor VAD 支持
-- [x] WhisperProcessor 缓冲处理（TranscribeBuffer）
-- [x] 音频格式实时转换（int16 48kHz → float 16kHz）
-- [x] CLI 实时转写集成（--transcribe-live）
-- [x] VAD 分段状态机（Speech → Silence → Trigger）
-- [x] 实时转写输出（边录边显示）
-
-### Milestone 5: 性能优化与增强 (✨ 100% 完成)
-- [x] Whisper 模型选择（TINY/BASE/SMALL/MEDIUM/LARGE）
-- [x] 性能计时系统（分段计时 + RTF 计算）
-- [x] VAD 灵敏度预设（5 种预设配置）
-- [x] VAD 自适应阈值（动态环境适应）
-- [x] 内存优化（缓冲区重用 + 条件扩容）
+已完成(Milestone 1–5): 基础录制 → 音频增强(RNNoise) → 离线 ASR(Whisper) → 实时 ASR → 性能优化。完整历史见 [CHANGELOG.md](CHANGELOG.md)。
 
 ### Milestone 6: 高级功能（进行中）
 - [x] 多音轨混音（AudioMixer：多轨增益 / 声像 / 静音 + master 增益；36 个单元测试）
 - [x] 无锁 SPSC 环形缓冲区（RingBuffer：实时音频路径的线程间无锁交接；42 个单元测试）
 - [x] 词级时间戳（word-level timestamps）和 JSON 字幕格式
-- [ ] 实时字幕流（LiveCaptioner：partial/final 字幕事件）
-- [ ] 说话人分离（diarization：会议场景"谁说了什么"）
-- [ ] WebRTC APM 集成（回声消除 / AGC，当前未实现）
-- [ ] 实时推流（SRT/RTMP）
-- [ ] GUI 客户端（Qt）
+
+### 下一步 / Forward Roadmap
+
+- **Phase 1: Agent 集成** — CLI 硬化 + MCP server（让 AI agent 能把 ffvoice 当本地离线语音工具调用）
+- **Phase 2: 实时字幕流 Live Captioning**
+- **Phase 3: 说话人分离 Speaker Diarization**
 
 ## 📝 开发说明
 
