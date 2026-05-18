@@ -10,7 +10,7 @@ def test_import():
     try:
         import ffvoice
 
-        assert ffvoice.__version__ == "0.6.1"
+        assert ffvoice.__version__ == "0.7.0"
     except ImportError as e:
         pytest.skip(f"Module not built yet: {e}")
 

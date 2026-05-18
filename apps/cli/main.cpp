@@ -34,7 +34,7 @@
 
 // Version is injected by CMake (single source of truth); fall back for non-CMake builds.
 #ifndef FFVOICE_VERSION
-    #define FFVOICE_VERSION "0.6.1"
+    #define FFVOICE_VERSION "0.7.0"
 #endif
 
 // ---------------------------------------------------------------------------

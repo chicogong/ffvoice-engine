@@ -9,10 +9,7 @@ import numpy as np
 def test_numpy_transcribe_buffer():
     """Test WhisperASR.transcribe_buffer with NumPy array"""
     try:
-        import sys
-
-        sys.path.insert(0, "/Users/haorangong/Github/chicogong/ffvoice-engine/python/ffvoice")
-        import _ffvoice
+        from ffvoice import _ffvoice
 
         # Create test audio (1 second of silence at 48kHz)
         sample_rate = 48000
@@ -43,10 +40,7 @@ def test_numpy_transcribe_buffer():
 def test_numpy_rnnoise_process():
     """Test RNNoise.process with NumPy array"""
     try:
-        import sys
-
-        sys.path.insert(0, "/Users/haorangong/Github/chicogong/ffvoice-engine/python/ffvoice")
-        import _ffvoice
+        from ffvoice import _ffvoice
 
         # Create test audio (256 samples at 48kHz)
         num_samples = 256
@@ -74,10 +68,7 @@ def test_numpy_rnnoise_process():
 def test_numpy_rnnoise_readonly():
     """Test that RNNoise.process rejects read-only arrays"""
     try:
-        import sys
-
-        sys.path.insert(0, "/Users/haorangong/Github/chicogong/ffvoice-engine/python/ffvoice")
-        import _ffvoice
+        from ffvoice import _ffvoice
 
         # Create read-only array
         audio = np.zeros(256, dtype=np.int16)
@@ -103,12 +94,10 @@ def test_numpy_rnnoise_readonly():
 def test_numpy_wav_writer():
     """Test WAVWriter.write_samples_array with NumPy array"""
     try:
-        import sys
         import tempfile
         import os
 
-        sys.path.insert(0, "/Users/haorangong/Github/chicogong/ffvoice-engine/python/ffvoice")
-        import _ffvoice
+        from ffvoice import _ffvoice
 
         # Create test audio
         sample_rate = 48000
@@ -147,12 +136,10 @@ def test_numpy_wav_writer():
 def test_numpy_flac_writer():
     """Test FLACWriter.write_samples_array with NumPy array"""
     try:
-        import sys
         import tempfile
         import os
 
-        sys.path.insert(0, "/Users/haorangong/Github/chicogong/ffvoice-engine/python/ffvoice")
-        import _ffvoice
+        from ffvoice import _ffvoice
 
         # Create test audio
         sample_rate = 48000
@@ -193,10 +180,7 @@ def test_numpy_flac_writer():
 def test_numpy_multidimensional_error():
     """Test that multidimensional arrays are rejected"""
     try:
-        import sys
-
-        sys.path.insert(0, "/Users/haorangong/Github/chicogong/ffvoice-engine/python/ffvoice")
-        import _ffvoice
+        from ffvoice import _ffvoice
 
         # Create 2D array
         audio_2d = np.zeros((10, 256), dtype=np.int16)
