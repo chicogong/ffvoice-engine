@@ -10,6 +10,7 @@
 
 // Core ffvoice headers
 #include "audio/audio_capture_device.h"
+#include "audio/audio_mixer.h"
 #ifdef ENABLE_RNNOISE
 #include "audio/rnnoise_processor.h"
 #endif
@@ -17,6 +18,7 @@
 #include "audio/whisper_processor.h"
 #include "media/wav_writer.h"
 #include "media/flac_writer.h"
+#include "utils/ring_buffer.h"
 
 namespace py = pybind11;
 using namespace ffvoice;
@@ -25,6 +27,24 @@ PYBIND11_MODULE(_ffvoice, m) {
     m.doc() = "High-performance offline speech recognition library for Python";
 
     // ========== Basic Types ==========
+
+    // Word
+    py::class_<Word>(m, "Word")
+        .def(py::init<>())
+        .def(py::init<int64_t, int64_t, const std::string&, float>(),
+             py::arg("start_ms"),
+             py::arg("end_ms"),
+             py::arg("text"),
+             py::arg("probability"))
+        .def_readonly("start_ms", &Word::start_ms, "Word start time in milliseconds")
+        .def_readonly("end_ms", &Word::end_ms, "Word end time in milliseconds")
+        .def_readonly("text", &Word::text, "Word text")
+        .def_readonly("probability", &Word::probability,
+                      "Mean token probability for this word (0.0-1.0)")
+        .def("__repr__", [](const Word& w) {
+            return "<Word [" + std::to_string(w.start_ms) + " -> " +
+                   std::to_string(w.end_ms) + "] '" + w.text + "'>";
+        });
 
     // TranscriptionSegment
     py::class_<TranscriptionSegment>(m, "TranscriptionSegment")
@@ -41,6 +61,8 @@ PYBIND11_MODULE(_ffvoice, m) {
                       "Transcribed text")
         .def_readonly("confidence", &TranscriptionSegment::confidence,
                       "Confidence score (0.0-1.0)")
+        .def_readonly("words", &TranscriptionSegment::words,
+                      "Per-word timestamps (empty unless word_timestamps was enabled)")
         .def("__repr__", [](const TranscriptionSegment& seg) {
             return "<TranscriptionSegment [" + std::to_string(seg.start_ms) +
                    " -> " + std::to_string(seg.end_ms) + "] '" + seg.text + "'>";
@@ -75,7 +97,11 @@ PYBIND11_MODULE(_ffvoice, m) {
         .def_readwrite("print_timestamps", &WhisperConfig::print_timestamps,
                        "Print timestamps with text")
         .def_readwrite("enable_performance_metrics", &WhisperConfig::enable_performance_metrics,
-                       "Enable detailed performance metrics");
+                       "Enable detailed performance metrics")
+        .def_readwrite("word_timestamps", &WhisperConfig::word_timestamps,
+                       "Populate per-word timestamps in each transcription segment")
+        .def_readwrite("input_sample_rate", &WhisperConfig::input_sample_rate,
+                       "Sample rate (Hz) of audio passed to transcribe_buffer()");
 
     // WhisperProcessor
     py::class_<WhisperProcessor>(m, "WhisperASR")
@@ -485,4 +511,123 @@ PYBIND11_MODULE(_ffvoice, m) {
              "Get compression ratio (original_size / compressed_size)")
         .def("close", &FlacWriter::Close,
              "Close the FLAC file");
+
+    // ========== Audio Mixer ==========
+
+    // AudioMixer
+    py::class_<AudioMixer>(m, "AudioMixer")
+        .def(py::init<>(), "Create a multi-track audio mixer")
+        .def("initialize", &AudioMixer::Initialize,
+             py::arg("sample_rate"),
+             py::arg("channels"),
+             "Initialize the mixer (channels must be 1 or 2)")
+        .def("is_initialized", &AudioMixer::IsInitialized,
+             "Check if the mixer is initialized")
+        .def("get_sample_rate", &AudioMixer::GetSampleRate, "Get the sample rate")
+        .def("get_channels", &AudioMixer::GetChannels, "Get the channel count")
+        .def("add_track", &AudioMixer::AddTrack,
+             py::arg("gain") = 1.0f,
+             py::arg("pan") = 0.0f,
+             "Add a track; returns its track id (-1 if the mixer is not initialized)")
+        .def("remove_track", &AudioMixer::RemoveTrack, py::arg("track_id"),
+             "Remove a track; returns True if it existed")
+        .def("has_track", &AudioMixer::HasTrack, py::arg("track_id"),
+             "Check whether a track exists")
+        .def("get_track_count", &AudioMixer::GetTrackCount, "Number of registered tracks")
+        .def("set_gain", &AudioMixer::SetGain, py::arg("track_id"), py::arg("gain"),
+             "Set a track's linear gain (clamped to [0, 8])")
+        .def("set_pan", &AudioMixer::SetPan, py::arg("track_id"), py::arg("pan"),
+             "Set a track's stereo pan (-1 = left, 0 = center, +1 = right)")
+        .def("set_mute", &AudioMixer::SetMute, py::arg("track_id"), py::arg("muted"),
+             "Mute or unmute a track")
+        .def("get_gain", &AudioMixer::GetGain, py::arg("track_id"), "Get a track's gain")
+        .def("get_pan", &AudioMixer::GetPan, py::arg("track_id"), "Get a track's pan")
+        .def("is_muted", &AudioMixer::IsMuted, py::arg("track_id"), "Check if a track is muted")
+        .def("set_master_gain", &AudioMixer::SetMasterGain, py::arg("gain"),
+             "Set the master gain applied to the mix (clamped to [0, 8])")
+        .def("get_master_gain", &AudioMixer::GetMasterGain, "Get the master gain")
+        .def("reset", &AudioMixer::Reset, "Remove all tracks and reset the master gain")
+        .def("mix_block",
+             [](AudioMixer& self, const py::dict& tracks) {
+                 // tracks: { track_id (int) : 1-D int16 NumPy array }.
+                 // Every array must have the same length.
+                 std::vector<py::array_t<int16_t>> arrays;  // keep buffers alive
+                 std::vector<MixerInput> inputs;
+                 size_t num_samples = 0;
+                 bool first = true;
+
+                 for (auto item : tracks) {
+                     int track_id = item.first.cast<int>();
+                     auto arr = item.second.cast<py::array_t<int16_t>>();
+                     py::buffer_info buf = arr.request();
+                     if (buf.ndim != 1) {
+                         throw std::runtime_error("Each track array must be 1-dimensional");
+                     }
+                     size_t n = static_cast<size_t>(buf.shape[0]);
+                     if (first) {
+                         num_samples = n;
+                         first = false;
+                     } else if (n != num_samples) {
+                         throw std::runtime_error("All track arrays must have the same length");
+                     }
+                     arrays.push_back(arr);
+                     inputs.push_back(MixerInput{track_id, static_cast<const int16_t*>(buf.ptr)});
+                 }
+
+                 py::array_t<int16_t> output(static_cast<py::ssize_t>(num_samples));
+                 py::buffer_info out_buf = output.request();
+                 if (!self.MixBlock(inputs, static_cast<int16_t*>(out_buf.ptr), num_samples)) {
+                     throw std::runtime_error(
+                         "mix_block failed (mixer not initialized or invalid arguments)");
+                 }
+                 return output;
+             },
+             py::arg("tracks"),
+             "Mix {track_id: int16 ndarray} into a single mixed int16 ndarray");
+
+    // ========== Ring Buffer ==========
+
+    // RingBuffer<int16_t> - lock-free SPSC ring buffer for audio samples
+    py::class_<RingBuffer<int16_t>>(m, "RingBuffer")
+        .def(py::init<size_t>(), py::arg("capacity"),
+             "Create a lock-free SPSC ring buffer for up to `capacity` int16 samples")
+        .def("capacity", &RingBuffer<int16_t>::capacity, "Maximum number of elements")
+        .def("size", &RingBuffer<int16_t>::size, "Number of elements currently stored")
+        .def("empty", &RingBuffer<int16_t>::empty, "True if the buffer is empty")
+        .def("full", &RingBuffer<int16_t>::full, "True if the buffer is full")
+        .def("available_read", &RingBuffer<int16_t>::available_read,
+             "Number of elements available to pop")
+        .def("available_write", &RingBuffer<int16_t>::available_write,
+             "Number of elements that can still be pushed")
+        .def("push", &RingBuffer<int16_t>::push, py::arg("value"),
+             "Push one value; returns False if the buffer is full")
+        .def("pop",
+             [](RingBuffer<int16_t>& self) -> py::object {
+                 int16_t value = 0;
+                 if (self.pop(value)) {
+                     return py::cast(value);
+                 }
+                 return py::none();
+             },
+             "Pop one value; returns None if the buffer is empty")
+        .def("push_bulk",
+             [](RingBuffer<int16_t>& self, py::array_t<int16_t> data) {
+                 py::buffer_info buf = data.request();
+                 if (buf.ndim != 1) {
+                     throw std::runtime_error("data must be a 1-dimensional int16 array");
+                 }
+                 return self.push_bulk(static_cast<const int16_t*>(buf.ptr),
+                                       static_cast<size_t>(buf.shape[0]));
+             },
+             py::arg("data"),
+             "Push values from a 1-D int16 ndarray; returns the number actually pushed")
+        .def("pop_bulk",
+             [](RingBuffer<int16_t>& self, size_t count) {
+                 std::vector<int16_t> tmp(count);
+                 size_t n = self.pop_bulk(tmp.data(), count);
+                 return py::array_t<int16_t>(static_cast<py::ssize_t>(n), tmp.data());
+             },
+             py::arg("count"),
+             "Pop up to `count` values; returns them as a 1-D int16 ndarray")
+        .def("clear", &RingBuffer<int16_t>::clear, "Reset the buffer to empty");
 }
