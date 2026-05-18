@@ -213,6 +213,150 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.4] - 2025-12-29
+
+### 修复 / Fixed
+- **[Python bindings]** 在 `bindings.cpp` 中为 `RNNoiseProcessor` 添加 `#ifdef ENABLE_RNNOISE` 条件编译守卫，使 Windows wheel 构建成功
+- **[Python bindings]** 修复 `WHISPER_MODEL_PATH` 在 Whisper 被禁用时未定义的编译错误
+- Windows x86_64 wheel 现在可以完整构建并上传到 PyPI
+
+---
+
+## [0.5.3] - 2025-12-29
+
+### 修复 / Fixed
+- **[Windows/MSVC]** 添加 `_USE_MATH_DEFINES` 宏以解决 MSVC 下 `M_PI` 未定义的编译错误
+- Windows CI 构建完整通过
+
+---
+
+## [0.5.2] - 2025-12-29
+
+### 修复 / Fixed
+- **[Windows/MSVC]** 在 CMake 和测试文件中禁用 RNNoise（MSVC 不支持 C99 可变长数组 VLA，而 RNNoise 的 C 源码依赖 VLA）
+- 为受影响的测试文件添加条件编译守卫
+- 修复 Windows CI 构建失败问题
+
+---
+
+## [0.5.1] - 2025-12-29
+
+### 修复 / Fixed
+- **[Windows/MSBuild]** 修复 `setup.py` 在 Windows 上错误使用 Unix 风格 `-j4` 参数的问题；Windows 下改用 MSBuild 的 `/m:4` 参数
+- 修复 v0.5.0 在 Windows 上的 CI 构建失败
+
+---
+
+## [0.5.0] - 2025-12-29
+
+### 新增 / Added
+- **多平台 wheel 构建（免费 CI runners）**：使用 GitHub Actions 免费 runner 构建三平台 wheels
+  - Linux x86_64（`ubuntu-latest`）
+  - macOS ARM64（`macos-latest`）
+  - Windows x86_64（`windows-latest`）
+- macOS Intel (x86_64) 用户可通过 sdist 从源码编译
+
+### 变更 / Changed
+- 移除付费 GitHub runner（`macos-15-large`），改用免费 runner，将 CI 成本降至零
+
+---
+
+## [0.4.9] - 2025-12-29
+
+### 修复 / Fixed
+- **[CI]** `macos-13` runner 已被 GitHub 废弃；替换为 `macos-15-large`（Intel Mac）
+- **[Windows/vcpkg]** 修复 vcpkg 安装脚本：改用系统预装的 vcpkg（无需额外 clone）；将包名 `flac` 修正为 `libflac`；移除与 vcpkg 冲突的 Chocolatey 安装步骤
+
+---
+
+## [0.4.8] - 2025-12-29
+
+### 新增 / Added
+- **Windows x86_64 wheel 构建支持**：在 `setup.py` 中添加 `CMAKE_TOOLCHAIN_FILE` 支持；在 CI 矩阵中加入 Windows 和 macOS Intel 构建目标
+- **sdist 源码包**：将 sdist 一并上传到 PyPI，允许不支持平台的用户从源码构建
+- vcpkg 依赖集成（portaudio、libflac、ffmpeg）
+
+---
+
+## [0.4.7] - 2025-12-29
+
+### 修复 / Fixed
+- **[macOS wheel]** 使用自定义 `bdist_wheel` 子类在 `finalize_options()` 阶段正确设置平台标签，修复 v0.4.6 未生效的问题
+- ARM64 wheel 标签：`macosx_11_0_arm64`；Intel wheel 标签：`macosx_10_9_x86_64`
+
+---
+
+## [0.4.6] - 2025-12-29
+
+### 修复 / Fixed
+- **[macOS wheel]** 将 wheel 平台标签从误导性的 `universal2` 改为实际架构（`arm64` 或 `x86_64`）
+- 在 `setup.py` 的 `CMakeBuild.build_extension` 中根据实际构建架构生成正确平台标签
+
+---
+
+## [0.4.5] - 2025-12-29
+
+### 变更 / Changed
+- **停止支持 Python 3.8**（EOL 2024 年 10 月），最低支持版本提升为 Python 3.9
+- 简化构建配置，移除 Python 3.8 的 workarounds
+- 升级 auditwheel 至 6.5+ 以自动检测最优 manylinux 标签
+
+### 新增 / Added
+- 同时为 Python 3.9、3.10、3.11、3.12 构建 wheel（macOS ARM64 + Linux x86_64，共 8 个 wheel）
+
+---
+
+## [0.4.4] - 2025-12-28
+
+### 修复 / Fixed
+- **[Linux wheel / PyPI]** v0.4.3 的 Linux wheel 使用 `linux_x86_64` 标签被 PyPI 拒绝（HTTP 400）
+- 在 CI 构建后加入 `auditwheel repair` 步骤，自动将 wheel 转换为标准 manylinux 格式（`manylinux2014_x86_64` / `manylinux_2_17_x86_64`）并捆绑必要的共享库
+
+---
+
+## [0.4.3] - 2025-12-28
+
+### 修复 / Fixed
+- **[macOS wheel]** v0.4.2 的 wheel 标记为 `universal2` 但实际只包含 ARM64 二进制，导致 Intel Mac 及 Rosetta 2 环境导入失败
+- 修复 `-march=native` 与 universal2 构建不兼容的问题；单架构构建保留优化标志
+- `setup.py` 更新架构检测：`ARM64` → `macosx_11_0_arm64`；`x86_64` → `macosx_10_9_x86_64`
+
+---
+
+## [0.4.2] - 2025-12-28
+
+### 修复 / Fixed
+- **[Python wheel]** CMake 未使用 `setup.py` 指定的 Python 版本构建扩展，导致 v0.4.1 的 PyPI 包在 `import` 时报 `ModuleNotFoundError`
+- 修复 GitHub Actions release workflow 的文件上传（改用 `gh` CLI 解决通配符问题）
+
+---
+
+## [0.4.1] - 2025-12-28
+
+### 新增 / Added
+- **首次发布到 PyPI** — `pip install ffvoice` 正式可用
+- 支持平台：Linux x86_64（manylinux）、macOS ARM64
+
+### 修复 / Fixed
+- **[Linux 构建]** 为所有静态库（ffvoice-core、whisper.cpp、rnnoise）启用 Position Independent Code（PIC），解决链接错误 `recompile with -fPIC`
+
+---
+
+## [0.4.0] - 2025-12-27
+
+### 新增 / Added
+- **Python 绑定（pybind11）** — `src/python/bindings.cpp`，440+ 行 C++ 绑定代码
+  - 13 个核心 C++ 类完整暴露：`WhisperASR`、`RNNoise`、`VADSegmenter`、`AudioCapture`、`WAVWriter`、`FLACWriter` 等
+  - 2 个枚举类型（`WhisperModelType` × 5、`VADSensitivity` × 5）
+  - NumPy 零拷贝数组支持：`transcribe_buffer(ndarray)`、`process(ndarray)` 原地处理
+  - Python 回调支持（含正确的 GIL 处理）：`AudioCapture.start(callback)`、`VADSegmenter.process_frame(…, callback)`
+- **Python 包** — `python/ffvoice/__init__.py`、`setup.py`、`pyproject.toml`，支持 `pip install .`
+- **CI/CD** — GitHub Actions workflows：`ci.yml`（多平台 + 多 Python 版本）、`release.yml`（自动构建 wheel + 上传 PyPI）
+- **文档** — `python/README.md`（335+ 行 API 参考）、`python/docs/QUICKSTART.md`、Jupyter Notebook 教程、完整示例代码
+- `docs/market-research.md`：Python 语音识别解决方案市场调研报告
+
+---
+
 ## [0.3.0] - 2025-12-27
 
 ### 新增 / Added
@@ -329,8 +473,25 @@ Version format: `MAJOR.MINOR.PATCH`
 
 ---
 
-[Unreleased]: https://github.com/chicogong/ffvoice-engine/compare/v0.5.5...HEAD
-[0.5.5]: https://github.com/chicogong/ffvoice-engine/compare/v0.3.0...v0.5.5
+[Unreleased]: https://github.com/chicogong/ffvoice-engine/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/chicogong/ffvoice-engine/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/chicogong/ffvoice-engine/compare/v0.5.5...v0.6.0
+[0.5.5]: https://github.com/chicogong/ffvoice-engine/compare/v0.5.4...v0.5.5
+[0.5.4]: https://github.com/chicogong/ffvoice-engine/compare/v0.5.3...v0.5.4
+[0.5.3]: https://github.com/chicogong/ffvoice-engine/compare/v0.5.2...v0.5.3
+[0.5.2]: https://github.com/chicogong/ffvoice-engine/compare/v0.5.1...v0.5.2
+[0.5.1]: https://github.com/chicogong/ffvoice-engine/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/chicogong/ffvoice-engine/compare/v0.4.9...v0.5.0
+[0.4.9]: https://github.com/chicogong/ffvoice-engine/compare/v0.4.8...v0.4.9
+[0.4.8]: https://github.com/chicogong/ffvoice-engine/compare/v0.4.7...v0.4.8
+[0.4.7]: https://github.com/chicogong/ffvoice-engine/compare/v0.4.6...v0.4.7
+[0.4.6]: https://github.com/chicogong/ffvoice-engine/compare/v0.4.5...v0.4.6
+[0.4.5]: https://github.com/chicogong/ffvoice-engine/compare/v0.4.4...v0.4.5
+[0.4.4]: https://github.com/chicogong/ffvoice-engine/compare/v0.4.3...v0.4.4
+[0.4.3]: https://github.com/chicogong/ffvoice-engine/compare/v0.4.2...v0.4.3
+[0.4.2]: https://github.com/chicogong/ffvoice-engine/compare/v0.4.1...v0.4.2
+[0.4.1]: https://github.com/chicogong/ffvoice-engine/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/chicogong/ffvoice-engine/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/chicogong/ffvoice-engine/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/chicogong/ffvoice-engine/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/chicogong/ffvoice-engine/releases/tag/v0.1.0

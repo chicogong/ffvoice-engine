@@ -60,7 +60,51 @@ jobs:
 
     - name: Run Python tests
       run: |
-        pytest python/tests -v || echo "Tests completed"
+        pytest python/tests -v
+
+    - name: Smoke-test Python examples (import + dry-run)
+      # Verify examples are importable and their argument-parsing code works.
+      # Full execution requires audio hardware and Whisper model files, so we
+      # only import and exercise lightweight code paths here.
+      run: |
+        python -c "
+        import importlib.util, sys, pathlib, types
+
+        # Helper: import a script file as a module without executing __main__
+        def import_script(path):
+            spec = importlib.util.spec_from_file_location('_script', path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+
+        examples_dir = pathlib.Path('python/examples')
+        scripts = sorted(examples_dir.glob('*.py'))
+        if not scripts:
+            print('WARNING: no example scripts found under python/examples/')
+            sys.exit(1)
+
+        errors = []
+        for script in scripts:
+            print(f'Checking: {script.name} ... ', end='', flush=True)
+            try:
+                import_script(script)
+                print('OK')
+            except SystemExit:
+                # Some scripts call sys.exit() at import time when run without
+                # args; treat that as a pass (the module loaded).
+                print('OK (exited)')
+            except Exception as exc:
+                print(f'FAILED: {exc}')
+                errors.append((script.name, exc))
+
+        if errors:
+            print()
+            for name, exc in errors:
+                print(f'FAIL {name}: {exc}')
+            sys.exit(1)
+
+        print(f'All {len(scripts)} example script(s) imported successfully.')
+        "
 
   build-wheels:
     name: Build wheels
@@ -100,3 +144,42 @@ jobs:
         name: wheels-${{ matrix.os }}
         path: dist/*.whl
         retention-days: 7
+
+  clang-format-check:
+    name: C++ Formatting Check (clang-format)
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install clang-format
+      run: |
+        # Pinned for reproducibility so CI and local formatting are identical.
+        # Locally: pip install clang-format==22.1.5  (see scripts/format.sh)
+        pip install clang-format==22.1.5
+        clang-format --version
+
+    - name: Check C++ formatting
+      run: |
+        UNFORMATTED=()
+        while IFS= read -r -d '' file; do
+          if ! clang-format --dry-run --Werror "$file" 2>/dev/null; then
+            UNFORMATTED+=("$file")
+          fi
+        done < <(find src apps include tests \
+          \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.cc' \) \
+          -print0)
+
+        if [ ${#UNFORMATTED[@]} -gt 0 ]; then
+          echo "The following files are not properly formatted:"
+          printf '  %s\n' "${UNFORMATTED[@]}"
+          echo ""
+          echo "Run './scripts/format.sh' locally to fix formatting."
+          exit 1
+        fi
+        echo "All C++ files are properly formatted."

@@ -319,8 +319,8 @@ TEST_F(AudioMixerTest, MixBlock_UnknownTrackIdIgnored) {
     auto good = Block(64, 1000);
     auto stray = Block(64, 9000);
     std::vector<int16_t> out(64);
-    ASSERT_TRUE(mixer.MixBlock({{t, good.data()}, {t + 777, stray.data()}}, out.data(),
-                               out.size()));
+    ASSERT_TRUE(
+        mixer.MixBlock({{t, good.data()}, {t + 777, stray.data()}}, out.data(), out.size()));
     for (int16_t s : out) {
         EXPECT_EQ(1000, s);  // unknown id contributes nothing
     }

@@ -39,6 +39,14 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
 ]
 
+dependencies = [
+    # numpy is required by the C++ bindings: transcribe_buffer(),
+    # RNNoise.process(), VADSegmenter.process_frame(), AudioMixer.mix_block(),
+    # RingBuffer.push_bulk() / pop_bulk(), and AudioCapture.start() all
+    # accept or return NumPy arrays.
+    "numpy>=1.20",
+]
+
 [project.urls]
 Homepage = "https://github.com/chicogong/ffvoice-engine"
 "Bug Reports" = "https://github.com/chicogong/ffvoice-engine/issues"
@@ -51,9 +59,6 @@ dev = [
     "black>=23.0",
     "flake8>=6.0",
     "mypy>=1.0",
-]
-numpy = [
-    "numpy>=1.20",
 ]
 
 [tool.black]

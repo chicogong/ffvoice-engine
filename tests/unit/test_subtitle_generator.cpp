@@ -6,16 +6,16 @@
 
 #ifdef ENABLE_WHISPER
 
-#include "utils/subtitle_generator.h"
+    #include "utils/subtitle_generator.h"
 
-#include <gtest/gtest.h>
+    #include <gtest/gtest.h>
 
-#include <cstdint>
-#include <cstdio>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <vector>
+    #include <cstdint>
+    #include <cstdio>
+    #include <fstream>
+    #include <sstream>
+    #include <string>
+    #include <vector>
 
 using namespace ffvoice;
 
@@ -89,8 +89,8 @@ TEST_F(SubtitleGeneratorTest, Generate_ReturnsTrueAndWritesFile) {
 
 TEST_F(SubtitleGeneratorTest, Generate_BadOutputPathReturnsFalse) {
     auto segments = SampleSegments();
-    EXPECT_FALSE(SubtitleGenerator::Generate(
-        segments, "/nonexistent_dir_ffvoice/output.json", SubtitleGenerator::Format::JSON));
+    EXPECT_FALSE(SubtitleGenerator::Generate(segments, "/nonexistent_dir_ffvoice/output.json",
+                                             SubtitleGenerator::Format::JSON));
 }
 
 // ============================================================================

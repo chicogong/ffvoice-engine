@@ -1,6 +1,6 @@
 # FFVoice Engine Test Suite
 
-This directory contains the comprehensive test suite for the FFVoice Engine project, focusing on Milestone 1 audio capture and playback functionality.
+This directory contains the comprehensive test suite for the FFVoice Engine project (v0.6.1). The suite currently has **270 unit tests** (all passing), covering the full pipeline from audio capture through noise reduction, VAD, ASR, mixing, and subtitle generation.
 
 ## Test Architecture Overview
 
@@ -23,21 +23,19 @@ tests/
 │   ├── test_signal_generator.h # Audio signal generation
 │   └── test_helpers.h         # Common helper functions
 │
-├── audio/                      # Audio component tests (to be created)
-│   ├── test_audio_capture.cpp
-│   ├── test_audio_playback.cpp
-│   └── test_audio_format.cpp
-│
-├── processing/                 # Audio processing tests (to be created)
-│   ├── test_resampler.cpp
-│   ├── test_codec.cpp
-│   └── test_vad.cpp
-│
-├── integration/                # Integration tests (to be created)
-│   └── test_audio_pipeline.cpp
-│
-└── data/                       # Test data files
-    └── sample_audio/           # Sample audio files for testing
+└── unit/                       # Unit tests (270 tests, all passing)
+    ├── test_wav_writer.cpp         # WAV RIFF format, size guard
+    ├── test_flac_writer.cpp        # FLAC compression, HasError()
+    ├── test_signal_generator.cpp   # Waveform / noise generation
+    ├── test_audio_processor.cpp    # VolumeNormalizer, HighPassFilter, Chain
+    ├── test_vad_segmenter.cpp      # VAD state machine, thresholds
+    ├── test_logger.cpp             # LOG_* macros, levels, stderr routing
+    ├── test_audio_converter.cpp    # Resampling, conversion (ENABLE_WHISPER)
+    ├── test_rnnoise_processor.cpp  # Denoise, VAD probability (ENABLE_RNNOISE)
+    ├── test_ring_buffer.cpp        # Lock-free SPSC ring buffer
+    ├── test_audio_mixer.cpp        # Multi-track mixing
+    ├── test_subtitle_generator.cpp # SRT/VTT/JSON output (ENABLE_WHISPER)
+    └── test_word_grouper.cpp       # Token to word grouping (ENABLE_WHISPER)
 ```
 
 ## Components
@@ -339,20 +337,30 @@ Tests can write WAV files for inspection:
 WriteWavFile("debug_output.wav", signal);
 ```
 
-## Performance Requirements (Milestone 1)
+## Test Coverage by Module (v0.6.1)
 
-### Audio Capture
-- Latency: < 20ms
-- CPU usage: < 10% (single core)
-- Memory: < 10MB for buffers
-- Sample rates: 8kHz, 16kHz, 48kHz
-- Formats: 16-bit PCM
+| Module | Tests | Notes |
+|--------|-------|-------|
+| WavWriter | 16 | RIFF format, size limits |
+| FlacWriter | 16 | Compression, HasError() |
+| SignalGenerator | 23 | Waveforms, noise |
+| AudioProcessor | 25 | Normalizer, HighPassFilter, Chain |
+| VADSegmenter | 16 | Speech detection, thresholds |
+| Logger | 24 | Log macros, levels, stderr routing |
+| AudioConverter | 19 | Resampling, format conversion (requires ENABLE_WHISPER) |
+| RNNoiseProcessor | 21 | Denoise, VAD probability (requires ENABLE_RNNOISE) |
+| RingBuffer | 42 | Lock-free SPSC, bulk transfer, capacity |
+| AudioMixer | 36 | Multi-track, gain/pan/mute, master gain |
+| SubtitleGenerator | 17 | SRT/VTT/JSON output, escaping (requires ENABLE_WHISPER) |
+| WordGrouper | 15 | Token-to-word grouping (requires ENABLE_WHISPER) |
+| **Total** | **270** | All passing |
 
-### Audio Playback
-- Latency: < 20ms
-- CPU usage: < 10% (single core)
-- No audio dropouts
-- Smooth playback
+## Performance Guidelines
+
+### Audio Processing
+- Real-time latency target: < 20ms
+- CPU usage (RNNoise): ~8–10% (single core)
+- Memory: < 500MB including whisper.cpp tiny model
 
 ### Code Quality
 - Test coverage: > 80%

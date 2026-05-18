@@ -58,9 +58,15 @@ jobs:
       run: |
         # vcpkg is pre-installed on GitHub Actions Windows runners
         C:\vcpkg\vcpkg install ffmpeg:x64-windows portaudio:x64-windows libflac:x64-windows
-        echo "CMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" >> $env:GITHUB_ENV
+        echo "CMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" | Out-File -FilePath $env:GITHUB_ENV -Append
 
     - name: Build wheels
+      # Note: setup.py passes -DENABLE_RNNOISE=ON to cmake, but CMakeLists.txt
+      # automatically forces ENABLE_RNNOISE=OFF on MSVC (RNNoise requires C99
+      # VLA which MSVC does not support). The Windows build is therefore safe.
+      env:
+        CMAKE_TOOLCHAIN_FILE: ${{ env.CMAKE_TOOLCHAIN_FILE }}
+      shell: bash
       run: |
         pip install build
         python -m build --wheel
@@ -91,7 +97,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
         pip install twine
-        twine upload dist/*.whl --skip-existing || echo "PyPI upload skipped (no token or already exists)"
+        twine upload dist/*.whl --skip-existing
 
   build-sdist:
     name: Build source distribution
@@ -126,4 +132,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           pip install twine
-          twine upload dist/*.tar.gz --skip-existing || echo "PyPI upload skipped (no token or already exists)"
+          twine upload dist/*.tar.gz --skip-existing

@@ -126,8 +126,7 @@ public:
      * @return false if the mixer is not initialized, @p num_samples is not a
      *         multiple of the channel count, or @p output is null.
      */
-    bool MixBlock(const std::vector<MixerInput>& inputs, int16_t* output,
-                  size_t num_samples) const;
+    bool MixBlock(const std::vector<MixerInput>& inputs, int16_t* output, size_t num_samples) const;
 
     /// Remove all tracks and reset the master gain to 1.0 (stays initialized).
     void Reset();

@@ -440,7 +440,6 @@ make -j$(nproc)
 ### 相关文档
 
 - [audio-processing.md](./audio-processing.md) - 音频处理框架总览
-- [webrtc-apm.md](./webrtc-apm.md) - WebRTC APM 集成
 - [README.md](../README.md) - 项目主文档
 
 ---

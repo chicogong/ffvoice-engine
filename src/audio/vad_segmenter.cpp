@@ -5,10 +5,10 @@
 
 #include "audio/vad_segmenter.h"
 
+#include "utils/logger.h"
+
 #include <algorithm>
 #include <cstring>
-
-#include "utils/logger.h"
 
 namespace ffvoice {
 
@@ -91,8 +91,7 @@ void VADSegmenter::ProcessFrame(const int16_t* samples, size_t num_samples, floa
         // max_segment_samples, even if a single frame reports an oversized or
         // malformed num_samples. Cap the insert so an unbounded/UB insert
         // cannot happen; the max-length termination check below then fires.
-        if (samples != nullptr && num_samples > 0 &&
-            buffer_.size() < config_.max_segment_samples) {
+        if (samples != nullptr && num_samples > 0 && buffer_.size() < config_.max_segment_samples) {
             size_t room = config_.max_segment_samples - buffer_.size();
             size_t to_insert = std::min(num_samples, room);
             if (to_insert < num_samples) {

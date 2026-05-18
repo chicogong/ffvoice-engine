@@ -54,6 +54,16 @@ TEST_F(LoggerTest, LogError_LongMessage) {
     EXPECT_TRUE(true);
 }
 
+TEST_F(LoggerTest, LogWarning_EmptyString) {
+    log_warning("");
+    EXPECT_TRUE(true);
+}
+
+TEST_F(LoggerTest, LogWarning_SimpleMessage) {
+    log_warning("Test warning message");
+    EXPECT_TRUE(true);
+}
+
 // =============================================================================
 // Macro Tests
 // =============================================================================
@@ -129,7 +139,7 @@ TEST_F(LoggerTest, EdgeCase_VeryLongFormatString) {
     char format[2000];
     memset(format, 'x', sizeof(format) - 1);
     format[sizeof(format) - 1] = '\0';
-    
+
     log_info(format);
     EXPECT_TRUE(true);
 }

@@ -222,9 +222,8 @@ std::string SubtitleGenerator::GenerateJSON(const std::vector<TranscriptionSegme
                 const auto& word = segment.words[w];
 
                 oss << "        { \"start_ms\": " << word.start_ms
-                    << ", \"end_ms\": " << word.end_ms << ", \"text\": \""
-                    << EscapeJSON(word.text) << "\", \"probability\": " << word.probability
-                    << " }";
+                    << ", \"end_ms\": " << word.end_ms << ", \"text\": \"" << EscapeJSON(word.text)
+                    << "\", \"probability\": " << word.probability << " }";
                 oss << (w < segment.words.size() - 1 ? ",\n" : "\n");
             }
             oss << "      ]\n";

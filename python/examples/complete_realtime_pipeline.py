@@ -3,219 +3,254 @@
 Complete Real-time Speech Recognition Pipeline
 
 This example demonstrates the full ffvoice pipeline:
-1. AudioCapture - Capture audio from microphone
-2. RNNoise - Reduce background noise and get VAD probability
-3. VADSegmenter - Segment speech based on VAD
-4. WhisperASR - Transcribe speech segments
+  1. AudioCapture   - capture audio frames from the microphone
+  2. RNNoise        - reduce background noise and get VAD probability
+  3. VADSegmenter   - accumulate frames into complete speech segments (callback-based)
+  4. WhisperASR     - offline transcription of each speech segment
 
 Requirements:
-- pip install numpy
-- Microphone access
-- Whisper model (downloaded automatically)
+    pip install numpy
+    Microphone access
+    A downloaded Whisper model (set model_path, or rely on the auto-locate default)
+
+Usage:
+    python complete_realtime_pipeline.py                  # default device, TINY model
+    python complete_realtime_pipeline.py --list-devices   # list devices and exit
+    python complete_realtime_pipeline.py 2                # use device id 2
+    python complete_realtime_pipeline.py 2 SMALL          # device 2, SMALL model
 """
 
-import ffvoice
-import numpy as np
-import time
 import sys
+import time
+import numpy as np
+import ffvoice
 
 
 class RealtimeTranscriber:
-    """Complete real-time transcription pipeline"""
+    """Complete real-time transcription pipeline."""
 
-    def __init__(self, model_type=ffvoice.WhisperModelType.TINY):
+    def __init__(
+        self, model_type: ffvoice.WhisperModelType = ffvoice.WhisperModelType.TINY
+    ) -> None:
         self.sample_rate = 48000
         self.channels = 1
         self.frames_per_buffer = 256
-
-        # Initialize components
-        print("Initializing components...")
-
-        # 1. RNNoise for noise reduction
-        rnnoise_config = ffvoice.RNNoiseConfig()
-        rnnoise_config.enable_vad = True
-        self.rnnoise = ffvoice.RNNoise(rnnoise_config)
-        self.rnnoise.initialize(self.sample_rate, self.channels)
-        print("✓ RNNoise initialized")
-
-        # 2. VAD Segmenter for intelligent speech segmentation
-        vad_config = ffvoice.VADConfig.from_preset(ffvoice.VADSensitivity.BALANCED)
-        self.vad = ffvoice.VADSegmenter(vad_config, self.sample_rate)
-        print("✓ VADSegmenter initialized")
-
-        # 3. Whisper ASR for transcription
-        whisper_config = ffvoice.WhisperConfig()
-        whisper_config.model_type = model_type
-        whisper_config.language = "auto"
-        self.asr = ffvoice.WhisperASR(whisper_config)
-        print(f"✓ Loading Whisper {ffvoice.WhisperASR.get_model_type_name(model_type)} model...")
-        if not self.asr.initialize():
-            print(f"Error: {self.asr.get_last_error()}")
-            sys.exit(1)
-        print("✓ Whisper ASR initialized")
-
-        # 4. Audio Capture
-        ffvoice.AudioCapture.initialize()
-        self.capture = ffvoice.AudioCapture()
-        print("✓ AudioCapture initialized")
-
-        # Statistics
         self.total_frames = 0
         self.total_segments = 0
         self.start_time = time.time()
 
-    def list_devices(self):
-        """List available audio devices"""
-        print("\nAvailable audio devices:")
-        devices = ffvoice.AudioCapture.get_devices()
-        for device in devices:
-            default_marker = " [DEFAULT]" if device.is_default else ""
-            print(f"  {device.id}: {device.name}{default_marker}")
-            print(f"      Input channels: {device.max_input_channels}")
-            print(f"      Sample rates: {device.supported_sample_rates[:3]}...")
-        print()
+        print("Initializing pipeline components...")
 
-    def segment_callback(self, segment_array):
-        """Called when VAD detects a complete speech segment"""
+        # 1. RNNoise for noise reduction (optional — only in ENABLE_RNNOISE builds)
+        self.rnnoise = None
+        if hasattr(ffvoice, "RNNoise"):
+            rnnoise_config = ffvoice.RNNoiseConfig()
+            rnnoise_config.enable_vad = True
+            self.rnnoise = ffvoice.RNNoise(rnnoise_config)
+            if self.rnnoise.initialize(self.sample_rate, self.channels):
+                print("  RNNoise initialized")
+            else:
+                print("  RNNoise initialization failed — skipping denoising")
+                self.rnnoise = None
+        else:
+            print("  RNNoise not available in this build")
+
+        # 2. VAD Segmenter
+        #    Constructor signature: VADSegmenter(config)  — no sample_rate argument.
+        vad_config = ffvoice.VADConfig.from_preset(ffvoice.VADSensitivity.BALANCED)
+        vad_config.enable_adaptive_threshold = True
+        self.vad = ffvoice.VADSegmenter(vad_config)
+        print("  VADSegmenter initialized")
+
+        # 3. Whisper ASR
+        whisper_config = ffvoice.WhisperConfig()
+        whisper_config.model_type = model_type
+        whisper_config.language = "auto"
+        whisper_config.enable_performance_metrics = True
+        # word_timestamps adds per-word timing to each TranscriptionSegment.words
+        whisper_config.word_timestamps = False
+
+        model_name = ffvoice.WhisperASR.get_model_type_name(model_type)
+        print(f"  Loading Whisper {model_name} model...")
+        self.asr = ffvoice.WhisperASR(whisper_config)
+        if not self.asr.initialize():
+            raise RuntimeError(f"Whisper init failed: {self.asr.get_last_error()}")
+        print("  Whisper ASR initialized")
+
+        # 4. Audio Capture
+        #    Must call AudioCapture.initialize() (static) before opening a device.
+        ffvoice.AudioCapture.initialize()
+        self.capture = ffvoice.AudioCapture()
+        print("  AudioCapture ready")
+
+    # ------------------------------------------------------------------
+    # Device helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def list_devices() -> None:
+        """Print all available audio input devices."""
+        ffvoice.AudioCapture.initialize()
+        devices = ffvoice.AudioCapture.get_devices()
+        print("\nAvailable audio devices:")
+        for device in devices:
+            if device.max_input_channels > 0:
+                default_marker = " [DEFAULT]" if device.is_default else ""
+                print(f"  {device.id}: {device.name}{default_marker}")
+                print(f"      Input channels:  {device.max_input_channels}")
+                rates = device.supported_sample_rates
+                print(f"      Sample rates:    {rates[:5]}")
+        print()
+        ffvoice.AudioCapture.terminate()
+
+    # ------------------------------------------------------------------
+    # Callbacks
+    # ------------------------------------------------------------------
+
+    def segment_callback(self, segment_array: np.ndarray) -> None:
+        """Called by VADSegmenter when a complete speech segment is ready."""
         self.total_segments += 1
 
-        # Get VAD statistics
-        stats = self.vad.get_statistics()
-        avg_vad = stats["avg_vad_prob"]
-        speech_ratio = stats["speech_ratio"]
+        # get_statistics() returns a tuple (avg_vad_prob, speech_ratio),
+        # NOT a dict — unpack directly.
+        avg_vad_prob, speech_ratio = self.vad.get_statistics()
 
         print(f"\n[Segment {self.total_segments}] {len(segment_array)} samples")
-        print(f"  VAD: {avg_vad:.2f}, Speech ratio: {speech_ratio:.1%}")
+        print(f"  VAD: avg={avg_vad_prob:.2f}, speech_ratio={speech_ratio:.1%}")
 
-        # Transcribe segment
         print("  Transcribing...", end=" ", flush=True)
-        start = time.time()
-
         try:
             segments = self.asr.transcribe_buffer(segment_array)
-            inference_time = self.asr.get_last_inference_time_ms()
+            inference_ms = self.asr.get_last_inference_time_ms()
 
             if segments:
                 for seg in segments:
-                    print(f'\n  → "{seg.text}"')
+                    print(f'\n  -> "{seg.text}"')
                     print(
-                        f"    [{seg.start_ms}ms - {seg.end_ms}ms, confidence: {seg.confidence:.2f}]"
+                        f"     [{seg.start_ms}ms - {seg.end_ms}ms, "
+                        f"confidence={seg.confidence:.2f}]"
                     )
-                print(f"    Inference: {inference_time}ms")
+                print(f"     Inference: {inference_ms} ms")
             else:
                 print("(no speech detected)")
+        except Exception as exc:
+            print(f"Error: {exc}")
 
-        except Exception as e:
-            print(f"Error: {e}")
-
-    def audio_callback(self, audio_array):
-        """Called for each audio frame from microphone"""
+    def audio_callback(self, audio_array: np.ndarray) -> None:
+        """Called for each captured audio frame from the microphone."""
         self.total_frames += 1
 
-        # Step 1: Noise reduction (in-place)
-        self.rnnoise.process(audio_array)
+        # Step 1: In-place noise reduction
+        if self.rnnoise is not None:
+            self.rnnoise.process(audio_array)
+            vad_prob = self.rnnoise.get_vad_probability()
+        else:
+            energy = float(np.abs(audio_array).mean())
+            vad_prob = min(1.0, energy / 3000.0)
 
-        # Step 2: Get VAD probability
-        vad_prob = self.rnnoise.get_vad_probability()
-
-        # Step 3: Feed to VAD segmenter
-        # The segmenter will call segment_callback when a complete segment is ready
+        # Step 2: Feed frame to VAD segmenter.
+        #         segment_callback fires automatically on complete segments.
         self.vad.process_frame(audio_array, vad_prob, self.segment_callback)
 
-        # Print status every 100 frames (~0.5s at 256 samples/frame @ 48kHz)
+        # Running status every 100 frames
         if self.total_frames % 100 == 0:
             elapsed = time.time() - self.start_time
-            is_speech = "🎤 SPEECH" if self.vad.is_in_speech() else "🔇 silence"
+            is_speech = "SPEECH" if self.vad.is_in_speech() else "silence"
             print(
-                f"\rFrames: {self.total_frames}, VAD: {vad_prob:.2f}, {is_speech}, "
-                f"Buffer: {self.vad.get_buffer_size()} samples, "
-                f"Time: {elapsed:.1f}s",
+                f"\rFrames: {self.total_frames:>6}, "
+                f"VAD: {vad_prob:.2f}, {is_speech}, "
+                f"buf={self.vad.get_buffer_size()} samples, "
+                f"{elapsed:.1f}s",
                 end="",
                 flush=True,
             )
 
-    def start(self, device_index=-1):
-        """Start real-time transcription"""
-        print(f"\nOpening audio device (device_index={device_index})...")
-        self.capture.open(
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def start(self, device_id: int = -1) -> None:
+        """Open the audio device and begin real-time transcription."""
+        print(f"\nOpening audio device (device_id={device_id})...")
+
+        # Parameter is `device_id` (int), NOT `device_index`
+        if not self.capture.open(
+            device_id=device_id,
             sample_rate=self.sample_rate,
             channels=self.channels,
             frames_per_buffer=self.frames_per_buffer,
-            device_index=device_index,
-        )
+        ):
+            raise RuntimeError("Failed to open audio device")
 
-        print(f"✓ Device opened: {self.sample_rate}Hz, {self.channels} channel(s)")
-        print("\nStarting real-time transcription...")
-        print("Speak into your microphone! (Press Ctrl+C to stop)\n")
+        actual_rate = self.capture.get_sample_rate()
+        actual_ch = self.capture.get_channels()
+        print(f"Device opened: {actual_rate} Hz, {actual_ch} channel(s)")
+        print("\nSpeak into your microphone! (Press Ctrl+C to stop)\n")
 
-        # Start capture with callback
+        # start(callback) — audio runs on a background C++ thread
         self.capture.start(self.audio_callback)
 
         try:
-            # Keep running until interrupted
             while True:
                 time.sleep(0.1)
-
         except KeyboardInterrupt:
             print("\n\nStopping...")
 
-    def stop(self):
-        """Stop transcription and cleanup"""
-        # Flush any remaining audio in VAD buffer
+    def stop(self) -> None:
+        """Flush remaining audio and shut down cleanly."""
         print("Flushing VAD buffer...")
         self.vad.flush(self.segment_callback)
 
-        # Stop capture
-        self.capture.stop()
-        self.capture.close()
+        if self.capture.is_capturing():
+            self.capture.stop()
+        if self.capture.is_open():
+            self.capture.close()
         ffvoice.AudioCapture.terminate()
 
-        # Print statistics
         elapsed = time.time() - self.start_time
-        print(f"\n\n{'='*60}")
-        print(f"Session Statistics:")
-        print(f"  Duration: {elapsed:.1f}s")
-        print(f"  Total frames: {self.total_frames}")
-        print(f"  Total segments: {self.total_segments}")
-        print(f"  Avg frames/segment: {self.total_frames/max(1,self.total_segments):.1f}")
+        print(f"\n{'='*60}")
+        print("Session Statistics:")
+        print(f"  Duration:        {elapsed:.1f} s")
+        print(f"  Total frames:    {self.total_frames}")
+        print(f"  Total segments:  {self.total_segments}")
+        avg = self.total_frames / max(1, self.total_segments)
+        print(f"  Avg frames/seg:  {avg:.1f}")
         print(f"{'='*60}")
 
 
-def main():
-    """Main entry point"""
+# ----------------------------------------------------------------------
+# Entry point
+# ----------------------------------------------------------------------
+
+
+def main() -> None:
     print("=" * 60)
-    print("ffvoice Real-time Speech Recognition")
+    print("ffvoice Complete Real-time Pipeline")
     print("=" * 60)
 
-    # Parse command line arguments
-    device_index = -1  # Use default device
-    model_type = ffvoice.WhisperModelType.TINY  # Use tiny model for speed
+    if len(sys.argv) > 1 and sys.argv[1] == "--list-devices":
+        RealtimeTranscriber.list_devices()
+        return
+
+    device_id = -1
+    model_type = ffvoice.WhisperModelType.TINY
 
     if len(sys.argv) > 1:
-        if sys.argv[1] == "--list-devices":
-            ffvoice.AudioCapture.initialize()
-            transcriber = RealtimeTranscriber(model_type)
-            transcriber.list_devices()
-            ffvoice.AudioCapture.terminate()
-            return
-
         try:
-            device_index = int(sys.argv[1])
+            device_id = int(sys.argv[1])
         except ValueError:
-            print(f"Usage: {sys.argv[0]} [device_index] [model_type]")
+            print(f"Usage: {sys.argv[0]} [device_id] [MODEL_TYPE]")
             print(f"       {sys.argv[0]} --list-devices")
-            print(f"\nModel types: TINY, BASE, SMALL, MEDIUM, LARGE")
+            print("Model types: TINY, BASE, SMALL, MEDIUM, LARGE")
             sys.exit(1)
 
     if len(sys.argv) > 2:
         model_name = sys.argv[2].upper()
         model_type = getattr(ffvoice.WhisperModelType, model_name, ffvoice.WhisperModelType.TINY)
 
-    # Create and run transcriber
     transcriber = RealtimeTranscriber(model_type)
-
     try:
-        transcriber.start(device_index)
+        transcriber.start(device_id)
     finally:
         transcriber.stop()
 

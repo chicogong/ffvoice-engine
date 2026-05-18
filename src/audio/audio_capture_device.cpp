@@ -30,12 +30,12 @@ bool AudioCaptureDevice::Initialize() {
 
     PaError err = Pa_Initialize();
     if (err != paNoError) {
-        log_error("PortAudio initialization failed: " + std::string(Pa_GetErrorText(err)));
+        LOG_ERROR("PortAudio initialization failed: %s", Pa_GetErrorText(err));
         return false;
     }
 
     is_initialized_ = true;
-    log_info("PortAudio initialized successfully");
+    LOG_INFO("PortAudio initialized successfully");
     return true;
 }
 
@@ -43,7 +43,7 @@ void AudioCaptureDevice::Terminate() {
     if (is_initialized_) {
         Pa_Terminate();
         is_initialized_ = false;
-        log_info("PortAudio terminated");
+        LOG_INFO("PortAudio terminated");
     }
 }
 
@@ -56,7 +56,7 @@ std::vector<AudioDeviceInfo> AudioCaptureDevice::GetDevices() {
 
     int num_devices = Pa_GetDeviceCount();
     if (num_devices < 0) {
-        log_error("Pa_GetDeviceCount failed");
+        LOG_ERROR("Pa_GetDeviceCount failed");
         return devices;
     }
 
@@ -94,7 +94,7 @@ int AudioCaptureDevice::GetDefaultInputDevice() {
 
 bool AudioCaptureDevice::Open(int device_id, int sample_rate, int channels, int frames_per_buffer) {
     if (stream_) {
-        log_error("Device already open");
+        LOG_ERROR("Device already open");
         return false;
     }
 
@@ -107,7 +107,7 @@ bool AudioCaptureDevice::Open(int device_id, int sample_rate, int channels, int 
     }
 
     if (device_id == paNoDevice) {
-        log_error("No default input device found");
+        LOG_ERROR("No default input device found");
         return false;
     }
 
@@ -131,12 +131,12 @@ bool AudioCaptureDevice::Open(int device_id, int sample_rate, int channels, int 
                                 nullptr);
 
     if (err != paNoError) {
-        log_error("Failed to open stream: " + std::string(Pa_GetErrorText(err)));
+        LOG_ERROR("Failed to open stream: %s", Pa_GetErrorText(err));
         stream_ = nullptr;
         return false;
     }
 
-    log_info("Audio device opened: " + std::string(Pa_GetDeviceInfo(device_id)->name));
+    LOG_INFO("Audio device opened: %s", Pa_GetDeviceInfo(device_id)->name);
     return true;
 }
 
@@ -160,7 +160,7 @@ int AudioCaptureDevice::PortAudioCallback(const void* input_buffer, void* output
 
     // Check for input overflow
     if (status_flags & paInputOverflow) {
-        log_error("Input overflow detected");
+        LOG_ERROR("Input overflow detected");
     }
 
     // Call user callback with audio data
@@ -174,12 +174,12 @@ int AudioCaptureDevice::PortAudioCallback(const void* input_buffer, void* output
 
 bool AudioCaptureDevice::Start(AudioCallback callback) {
     if (!stream_) {
-        log_error("Device not open");
+        LOG_ERROR("Device not open");
         return false;
     }
 
     if (is_capturing_) {
-        log_error("Already capturing");
+        LOG_ERROR("Already capturing");
         return false;
     }
 
@@ -191,8 +191,7 @@ bool AudioCaptureDevice::Start(AudioCallback callback) {
     PaError err = Pa_CloseStream(stream_);
     stream_ = nullptr;
     if (err != paNoError) {
-        log_error("Failed to close stream before reopen: " +
-                  std::string(Pa_GetErrorText(err)));
+        LOG_ERROR("Failed to close stream before reopen: %s", Pa_GetErrorText(err));
         return false;
     }
 
@@ -211,14 +210,14 @@ bool AudioCaptureDevice::Start(AudioCallback callback) {
     );
 
     if (err != paNoError) {
-        log_error("Failed to reopen stream with callback: " + std::string(Pa_GetErrorText(err)));
+        LOG_ERROR("Failed to reopen stream with callback: %s", Pa_GetErrorText(err));
         stream_ = nullptr;  // No valid stream; keep device in a clean closed state
         return false;
     }
 
     err = Pa_StartStream(stream_);
     if (err != paNoError) {
-        log_error("Failed to start stream: " + std::string(Pa_GetErrorText(err)));
+        LOG_ERROR("Failed to start stream: %s", Pa_GetErrorText(err));
         // Stream was opened but could not start; close it so we do not leak
         // the handle and leave the device half-open.
         Pa_CloseStream(stream_);
@@ -228,7 +227,7 @@ bool AudioCaptureDevice::Start(AudioCallback callback) {
 
     callback_active_.store(true);  // Enable callback execution
     is_capturing_ = true;
-    log_info("Audio capture started");
+    LOG_INFO("Audio capture started");
     return true;
 }
 
@@ -241,11 +240,11 @@ void AudioCaptureDevice::Stop() {
 
     PaError err = Pa_StopStream(stream_);
     if (err != paNoError) {
-        log_error("Failed to stop stream: " + std::string(Pa_GetErrorText(err)));
+        LOG_ERROR("Failed to stop stream: %s", Pa_GetErrorText(err));
     }
 
     is_capturing_ = false;
-    log_info("Audio capture stopped");
+    LOG_INFO("Audio capture stopped");
 }
 
 void AudioCaptureDevice::Close() {
@@ -256,7 +255,7 @@ void AudioCaptureDevice::Close() {
     if (stream_) {
         Pa_CloseStream(stream_);
         stream_ = nullptr;
-        log_info("Audio device closed");
+        LOG_INFO("Audio device closed");
     }
 }
 

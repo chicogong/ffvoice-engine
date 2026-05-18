@@ -242,8 +242,8 @@ import numpy as np
 # Create VAD config with preset
 config = ffvoice.VADConfig.from_preset(ffvoice.VADSensitivity.BALANCED)
 
-# Initialize VAD segmenter
-vad = ffvoice.VADSegmenter(config, sample_rate=48000)
+# Initialize VAD segmenter — constructor takes only config, no sample_rate arg
+vad = ffvoice.VADSegmenter(config)
 
 # Define callback for complete segments
 def segment_callback(segment_array):
@@ -260,10 +260,10 @@ vad.process_frame(audio_frame, vad_prob, segment_callback)
 # Flush remaining audio at the end
 vad.flush(segment_callback)
 
-# Get statistics
-stats = vad.get_statistics()
-print(f"Average VAD: {stats['avg_vad_prob']:.2f}")
-print(f"Speech ratio: {stats['speech_ratio']:.2%}")
+# get_statistics() returns a tuple (avg_vad_prob, speech_ratio), NOT a dict
+avg_vad_prob, speech_ratio = vad.get_statistics()
+print(f"Average VAD: {avg_vad_prob:.2f}")
+print(f"Speech ratio: {speech_ratio:.2%}")
 print(f"Is in speech: {vad.is_in_speech()}")
 ```
 
@@ -392,20 +392,21 @@ Offline speech recognition using Whisper models.
 Real-time audio capture from microphone with callback support.
 
 **Methods:**
-- `open(sample_rate, channels, frames_per_buffer, device_index=-1)` - Open audio device
-- `start(callback)` - Start capture with Python callback receiving NumPy arrays
+- `open(device_id=-1, sample_rate=48000, channels=1, frames_per_buffer=256)` - Open audio device.
+  Note: the parameter is `device_id` (not `device_index`).
+- `start(callback)` - Start capture with Python callback receiving NumPy arrays (int16, 1D)
 - `stop()` - Stop audio capture
 - `close()` - Close audio device
-- `is_open` - Property: check if device is open (bool)
-- `is_capturing` - Property: check if currently capturing (bool)
-- `sample_rate` - Property: get sample rate (int)
-- `channels` - Property: get number of channels (int)
+- `is_open()` - Check if device is open (bool)
+- `is_capturing()` - Check if currently capturing (bool)
+- `get_sample_rate()` - Get sample rate (int)
+- `get_channels()` - Get number of channels (int)
 
 **Static Methods:**
 - `initialize()` - Initialize PortAudio system
 - `terminate()` - Terminate PortAudio system
 - `get_devices()` - Get list of `AudioDeviceInfo` objects
-- `get_default_input_device()` - Get default input device info
+- `get_default_input_device()` - Get default input device ID (int)
 
 #### `RNNoise`
 AI-powered noise reduction with NumPy support.
@@ -419,6 +420,8 @@ AI-powered noise reduction with NumPy support.
 #### `VADSegmenter`
 Voice activity detection and intelligent segmentation with callbacks.
 
+**Constructor:** `VADSegmenter(config)` — takes only a `VADConfig`; there is no `sample_rate` argument.
+
 **Methods:**
 - `process_frame(audio_array, vad_prob, callback)` - Process audio frame with callback for complete segments
 - `flush(callback)` - Flush remaining audio with callback
@@ -426,29 +429,30 @@ Voice activity detection and intelligent segmentation with callbacks.
 - `is_in_speech()` - Check if currently in speech (bool)
 - `get_buffer_size()` - Get current buffer size in samples (int)
 - `get_current_threshold()` - Get adaptive threshold (float)
-- `get_statistics()` - Get VAD statistics as dict: `{'avg_vad_prob': float, 'speech_ratio': float}`
+- `get_statistics()` - Get VAD statistics as a **tuple** `(avg_vad_prob, speech_ratio)`;
+  unpack with `avg_vad_prob, speech_ratio = vad.get_statistics()` — it is **not** a dict.
 
 #### `WAVWriter`
 Write audio to WAV files with NumPy support.
 
 **Methods:**
-- `open(filename, sample_rate, channels)` - Open WAV file for writing
-- `write_samples_array(audio_array)` - Write NumPy array to file, returns samples written (int)
+- `open(filename, sample_rate, channels, bits_per_sample=16)` - Open WAV file for writing
+- `write_samples_array(audio_array)` - Write NumPy array (int16, 1D) to file, returns samples written (int)
 - `close()` - Close file and finalize headers
-- `is_open` - Property: check if file is open (bool)
-- `total_samples` - Property: get total samples written (int)
+- `is_open()` - Check if file is open (bool)
+- `get_total_samples()` - Get total samples written (int)
 
 #### `FLACWriter`
 Write audio to FLAC files with compression and NumPy support.
 
 **Methods:**
-- `open(filename, sample_rate, channels, bits_per_sample, compression_level)` - Open FLAC file
+- `open(filename, sample_rate, channels, bits_per_sample=16, compression_level=5)` - Open FLAC file
   - `compression_level`: 0 (fastest) to 8 (best compression), default 5
-- `write_samples_array(audio_array)` - Write NumPy array to file, returns samples written (int)
+- `write_samples_array(audio_array)` - Write NumPy array (int16, 1D) to file, returns samples written (int)
 - `close()` - Close file and finalize
 - `get_compression_ratio()` - Get compression ratio (float)
-- `is_open` - Property: check if file is open (bool)
-- `total_samples` - Property: get total samples written (int)
+- `is_open()` - Check if file is open (bool)
+- `get_total_samples()` - Get total samples written (int)
 
 #### `AudioMixer`
 Multi-track mixer that combines several int16 audio tracks into one output.
@@ -528,11 +532,12 @@ Audio device information.
 - `word_timestamps` - Populate per-word timestamps in each `TranscriptionSegment.words` (bool, default `False`)
 - `input_sample_rate` - Sample rate (Hz) of audio passed to `transcribe_buffer()` (int, default 48000)
 
-#### `AudioCaptureConfig`
+#### `AudioCapture.open()` parameters
+There is no separate `AudioCaptureConfig` class. Pass these arguments directly to `AudioCapture.open()`:
+- `device_id` - Audio device ID (-1 for system default)
 - `sample_rate` - Sample rate in Hz (default: 48000)
 - `channels` - Number of channels (default: 1)
-- `frames_per_buffer` - Buffer size (default: 256)
-- `device_index` - Audio device (-1 for default)
+- `frames_per_buffer` - Buffer size in frames (default: 256)
 
 #### `VADConfig`
 - `speech_threshold` - VAD probability threshold
@@ -593,9 +598,9 @@ If you get `ImportError: Failed to import ffvoice native module`:
 
 If audio capture fails:
 
-1. List available devices: `ffvoice.AudioCapture.list_devices()`
+1. List available devices: `ffvoice.AudioCapture.get_devices()`
 2. Check device permissions (microphone access)
-3. Try a different device index in `AudioCaptureConfig`
+3. Try a different `device_id` in `AudioCapture.open()`
 
 ### Model Loading Issues
 
