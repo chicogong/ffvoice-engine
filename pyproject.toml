@@ -53,13 +53,21 @@ Homepage = "https://github.com/chicogong/ffvoice-engine"
 "Source" = "https://github.com/chicogong/ffvoice-engine"
 
 [project.optional-dependencies]
+mcp = [
+    "mcp>=1.2.0,<2.0",
+    "numpy>=1.20",
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "black>=23.0",
     "flake8>=6.0",
     "mypy>=1.0",
+    "mcp>=1.2.0,<2.0",
 ]
+
+[project.scripts]
+ffvoice-mcp = "ffvoice.mcp:main"
 
 [tool.black]
 line-length = 100
