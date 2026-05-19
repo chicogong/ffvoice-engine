@@ -34,15 +34,17 @@
 [![Code Style](https://img.shields.io/badge/code%20style-Google-blue.svg)](https://google.github.io/styleguide/cppguide.html)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-> 🎙️ 高性能 C++ 语音引擎 - 实时音频处理 + AI 语音识别 + 边录边转写
+> 🎙️ **Offline speech-to-text & speaker diarization for AI agents** — Whisper ASR, live captioning, an MCP server, a CLI and Python bindings. Fully on-device, no cloud API.
+>
+> 🎙️ **离线语音识别 + 说话人分离,AI Agent 开箱即用** —— Whisper 实时转写 · 实时字幕 · MCP server · CLI · Python 绑定 · 100% 本地运行,音频不上云。
 
 ---
 
 ## Why ffvoice? / 为什么用 ffvoice？
 
-**The honest pitch**: ffvoice is an **integration layer**, not a new ASR engine. It embeds [whisper.cpp](https://github.com/ggerganov/whisper.cpp) as-is and makes no changes to its accuracy or inference speed. What ffvoice adds is a **batteries-included, pre-wired pipeline** — microphone capture → RNNoise denoising → VAD segmentation → Whisper ASR → audio mixing → WAV/FLAC/subtitles — delivered as a single C++ SDK with Python bindings and a CLI, all in one `pip install` or `cmake` build.
+**The honest pitch**: ffvoice is an **integration layer**, not a new ASR engine. It embeds [whisper.cpp](https://github.com/ggerganov/whisper.cpp) as-is and makes no changes to its accuracy or inference speed. What ffvoice adds is a **batteries-included, pre-wired pipeline** — microphone capture → RNNoise denoising → VAD segmentation → Whisper ASR → speaker diarization → live captions / WAV / FLAC / subtitles — delivered as a single C++ SDK with Python bindings, a CLI, and an **MCP server** that lets AI agents (Claude and others) transcribe audio out of the box — all in one `pip install` or `cmake` build.
 
-**诚实定位**: ffvoice 是一个**集成层**，而非新的 ASR 引擎。它内嵌 whisper.cpp，不修改其识别精度或推理速度。ffvoice 带来的是一条**开箱即用、预连接的完整管道**——麦克风采集 → RNNoise 降噪 → VAD 分段 → Whisper ASR → 音频混音 → WAV/FLAC/字幕输出——打包成一个 C++ SDK + Python 绑定 + CLI，一条 `pip install` 或 `cmake` 即可完成。
+**诚实定位**: ffvoice 是一个**集成层**，而非新的 ASR 引擎。它内嵌 whisper.cpp，不修改其识别精度或推理速度。ffvoice 带来的是一条**开箱即用、预连接的完整管道**——麦克风采集 → RNNoise 降噪 → VAD 分段 → Whisper ASR → 说话人分离 → 实时字幕 / WAV / FLAC / 字幕输出——打包成 C++ SDK + Python 绑定 + CLI，外加一个 **MCP server**,让 AI agent(Claude 等)开箱即用地转写音频——一条 `pip install` 或 `cmake` 即可完成。
 
 ### Pain points it addresses / 解决的痛点
 
