@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 from mcp.server.fastmcp import FastMCP
 
 import ffvoice
+from ffvoice.mcp._diarization_pipeline import DiarizationPipeline
 from ffvoice.mcp._live_caption_pipeline import LiveCaptionSession
 from ffvoice.mcp._pipeline import CaptureSession
 
@@ -494,6 +495,121 @@ def capture_and_caption(
 
     result = session.get_result()
     return result
+
+
+# ---------------------------------------------------------------------------
+# Tool 5: transcribe_file_with_diarization
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def transcribe_file_with_diarization(
+    path: str,
+    language: str = "auto",
+    model: str = "base",
+    num_speakers: int = -1,
+    word_timestamps: bool = False,
+) -> Dict[str, Any]:
+    """
+    Transcribe a local audio file and label each segment with a speaker.
+
+    Combines offline Whisper ASR with speaker diarization ("who spoke when"):
+    the file is transcribed, diarized, and every transcription segment is
+    annotated with the speaker who was talking during it.  Processing is fully
+    on-device — no audio is sent anywhere.
+
+    This tool requires a build with ENABLE_DIARIZATION=ON.  When diarization is
+    unavailable it returns a structured error dict instead of raising.
+
+    Args:
+        path: Absolute or relative path to the audio file.
+        language: BCP-47 language code ('en', 'zh', 'fr', …) or 'auto' for
+            automatic language detection.
+        model: Whisper model size — one of 'tiny', 'base', 'small', 'medium',
+            'large'.  Larger models are more accurate but slower.
+        num_speakers: Expected number of speakers.  Pass -1 (default) to
+            auto-detect the number of speakers via clustering.
+        word_timestamps: When True, each segment includes per-word timing in
+            the 'words' field.
+
+    Returns:
+        On success::
+
+            {
+                "segments": [
+                    {
+                        "start_ms": int,
+                        "end_ms": int,
+                        "text": str,
+                        "confidence": float,
+                        "speaker_id": int,
+                        "words": [...]   # only when word_timestamps=True
+                    },
+                    ...
+                ],
+                "speaker_segments": [
+                    {"start_ms": int, "end_ms": int, "speaker_id": int},
+                    ...
+                ],
+                "inference_ms": int,
+                "num_speakers_detected": int,
+                "model_used": str,
+                "language": str
+            }
+
+        On failure::
+
+            {"error": "<message>", "segments": [], "speaker_segments": []}
+    """
+    if not ffvoice.HAS_DIARIZATION:
+        return {
+            "error": (
+                "Speaker diarization is not available in this build. "
+                "Rebuild ffvoice-engine with -DENABLE_DIARIZATION=ON."
+            ),
+            "segments": [],
+            "speaker_segments": [],
+        }
+
+    if not os.path.exists(path):
+        return {"error": f"File not found: {path}", "segments": [], "speaker_segments": []}
+
+    model_lower = model.lower()
+    if model_lower not in _MODEL_NAME_MAP:
+        return {
+            "error": f"Unknown model '{model}'. Valid values: {list(_MODEL_NAME_MAP.keys())}",
+            "segments": [],
+            "speaker_segments": [],
+        }
+
+    try:
+        asr = _build_asr(model_lower, language, word_timestamps)
+    except RuntimeError as exc:
+        return {"error": str(exc), "segments": [], "speaker_segments": []}
+
+    diar_config = ffvoice.DiarizerConfig()
+    diar_config.num_speakers = num_speakers
+    diarizer = ffvoice.Diarizer(diar_config)
+    if not diarizer.init():
+        return {
+            "error": f"Diarizer initialisation failed: {diarizer.get_last_error()}",
+            "segments": [],
+            "speaker_segments": [],
+        }
+
+    try:
+        result = DiarizationPipeline(asr, diarizer).run(path, word_timestamps)
+    except RuntimeError as exc:
+        return {"error": str(exc), "segments": [], "speaker_segments": []}
+
+    return {
+        "segments": result["segments"],
+        "speaker_segments": result["speaker_segments"],
+        "inference_ms": result["inference_ms"],
+        "num_speakers_detected": result["num_speakers_detected"],
+        "model_used": model_lower,
+        "language": language,
+    }
 
 
 # ---------------------------------------------------------------------------

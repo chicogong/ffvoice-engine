@@ -55,6 +55,18 @@ def _make_segment(
     return seg
 
 
+def _make_speaker_segment(
+    start_ms: int = 0,
+    end_ms: int = 1000,
+    speaker_id: int = 0,
+) -> MagicMock:
+    sp = MagicMock()
+    sp.start_ms = start_ms
+    sp.end_ms = end_ms
+    sp.speaker_id = speaker_id
+    return sp
+
+
 def _make_word(start_ms: int, end_ms: int, text: str, probability: float = 0.95) -> MagicMock:
     w = MagicMock()
     w.start_ms = start_ms
@@ -232,6 +244,45 @@ class _RNNoise:
         return 0.8
 
 
+class _SpeakerSegment:
+    def __init__(self, start_ms: int = 0, end_ms: int = 0, speaker_id: int = -1) -> None:
+        self.start_ms = start_ms
+        self.end_ms = end_ms
+        self.speaker_id = speaker_id
+
+
+class _DiarizerConfig:
+    def __init__(self) -> None:
+        self.segmentation_model_path = ""
+        self.embedding_model_path = ""
+        self.num_speakers = -1
+        self.cluster_threshold = 0.5
+        self.num_threads = 2
+
+
+class _Diarizer:
+    def __init__(self, config: Any = None) -> None:
+        self._config = config
+        self._segments: List[Any] = []
+        self._init_ok: bool = True
+        self._error: str = ""
+
+    def init(self) -> bool:
+        return self._init_ok
+
+    def is_initialized(self) -> bool:
+        return self._init_ok
+
+    def diarize(self, audio: Any, sample_rate: int = 16000) -> List[Any]:
+        return self._segments
+
+    def get_last_error(self) -> str:
+        return self._error
+
+    def get_expected_sample_rate(self) -> int:
+        return 16000
+
+
 def _build_fake_ffvoice_extension() -> types.ModuleType:
     """Return a synthetic ``_ffvoice`` module carrying the mock classes."""
     mod = types.ModuleType("ffvoice._ffvoice")
@@ -245,6 +296,12 @@ def _build_fake_ffvoice_extension() -> types.ModuleType:
     mod.VADSegmenter = _VADSegmenter  # type: ignore[attr-defined]
     mod.RNNoise = _RNNoise  # type: ignore[attr-defined]
     mod.RNNoiseConfig = _RNNoiseConfig  # type: ignore[attr-defined]
+    # Speaker diarization stubs
+    mod.SpeakerSegment = _SpeakerSegment  # type: ignore[attr-defined]
+    mod.DiarizerConfig = _DiarizerConfig  # type: ignore[attr-defined]
+    mod.Diarizer = _Diarizer  # type: ignore[attr-defined]
+    mod.HAS_DIARIZATION = True  # type: ignore[attr-defined]
+    mod.merge_into_segments = lambda segs, speakers: segs  # type: ignore[attr-defined]
     # Extra stubs expected by ffvoice.__init__'s star-import
     for name in (
         "Word",
@@ -297,6 +354,12 @@ def mock_ffvoice_module():
     _ffvoice_pkg.WhisperModelType = _WhisperModelType  # type: ignore[attr-defined]
     _ffvoice_pkg.VADSensitivity = _VADSensitivity  # type: ignore[attr-defined]
     _ffvoice_pkg._HAS_RNNOISE = True  # type: ignore[attr-defined]
+    _ffvoice_pkg.SpeakerSegment = _SpeakerSegment  # type: ignore[attr-defined]
+    _ffvoice_pkg.DiarizerConfig = _DiarizerConfig  # type: ignore[attr-defined]
+    _ffvoice_pkg.Diarizer = _Diarizer  # type: ignore[attr-defined]
+    _ffvoice_pkg.HAS_DIARIZATION = True  # type: ignore[attr-defined]
+    _ffvoice_pkg._HAS_DIARIZATION = True  # type: ignore[attr-defined]
+    _ffvoice_pkg.merge_into_segments = lambda segs, speakers: segs  # type: ignore[attr-defined]
 
     yield _ffvoice_pkg
 
@@ -767,3 +830,203 @@ class TestImportGuards:
             for key in list(sys.modules.keys()):
                 if key.startswith("ffvoice.mcp"):
                     del sys.modules[key]
+
+
+# ---------------------------------------------------------------------------
+# Tests: transcribe_file_with_diarization
+# ---------------------------------------------------------------------------
+
+
+class TestTranscribeFileWithDiarization:
+    def test_diarization_unavailable_returns_error(
+        self, tmp_path: Any, mock_ffvoice_module: Any
+    ) -> None:
+        """When HAS_DIARIZATION is False the tool returns a structured error."""
+        mock_ffvoice_module.HAS_DIARIZATION = False
+        audio_file = tmp_path / "speech.wav"
+        audio_file.write_bytes(b"\x00" * 100)
+
+        srv = _import_server()
+        result = srv.transcribe_file_with_diarization(str(audio_file))
+
+        assert "error" in result
+        assert "ENABLE_DIARIZATION" in result["error"]
+        assert result["segments"] == []
+        assert result["speaker_segments"] == []
+
+    def test_file_not_found(self, tmp_path: Any, mock_ffvoice_module: Any) -> None:
+        srv = _import_server()
+        result = srv.transcribe_file_with_diarization(str(tmp_path / "missing.wav"))
+        assert "error" in result
+        assert "not found" in result["error"].lower()
+        assert result["segments"] == []
+        assert result["speaker_segments"] == []
+
+    def test_unknown_model(self, tmp_path: Any, mock_ffvoice_module: Any) -> None:
+        audio_file = tmp_path / "audio.wav"
+        audio_file.write_bytes(b"\x00" * 100)
+
+        srv = _import_server()
+        result = srv.transcribe_file_with_diarization(str(audio_file), model="supermodel")
+        assert "error" in result
+        assert "supermodel" in result["error"]
+        assert result["speaker_segments"] == []
+
+    def test_successful_diarization(self, tmp_path: Any, mock_ffvoice_module: Any) -> None:
+        audio_file = tmp_path / "speech.wav"
+        audio_file.write_bytes(b"\x00" * 100)
+
+        seg = _make_segment(start_ms=0, end_ms=2000, text="hello world", confidence=0.95)
+        seg.speaker_id = 1
+        sp = _make_speaker_segment(start_ms=0, end_ms=2000, speaker_id=1)
+
+        class PatchedASR(_WhisperASR):
+            def transcribe_file(self, path: str) -> List[Any]:
+                return [seg]
+
+            def get_last_inference_time_ms(self) -> int:
+                return 321
+
+        class PatchedDiarizer(_Diarizer):
+            def diarize(self, audio: Any, sample_rate: int = 16000) -> List[Any]:
+                return [sp]
+
+        mock_ffvoice_module.WhisperASR = PatchedASR
+        mock_ffvoice_module.Diarizer = PatchedDiarizer
+
+        # Import the server first (this re-imports the diarization pipeline
+        # module), then patch the audio loader on the freshly imported module.
+        srv = _import_server()
+        with patch(
+            "ffvoice.mcp._diarization_pipeline._default_load_audio",
+            return_value=([0.0] * 16000, 16000),
+        ):
+            result = srv.transcribe_file_with_diarization(
+                str(audio_file), model="tiny", language="en"
+            )
+
+        assert "error" not in result
+        assert len(result["segments"]) == 1
+        assert result["segments"][0]["text"] == "hello world"
+        assert result["segments"][0]["speaker_id"] == 1
+        assert len(result["speaker_segments"]) == 1
+        assert result["speaker_segments"][0]["speaker_id"] == 1
+        assert result["inference_ms"] == 321
+        assert result["num_speakers_detected"] == 1
+        assert result["model_used"] == "tiny"
+        assert result["language"] == "en"
+
+    def test_diarizer_init_failure(self, tmp_path: Any, mock_ffvoice_module: Any) -> None:
+        audio_file = tmp_path / "speech.wav"
+        audio_file.write_bytes(b"\x00" * 100)
+
+        class FailDiarizer(_Diarizer):
+            def init(self) -> bool:
+                return False
+
+            def get_last_error(self) -> str:
+                return "segmentation model missing"
+
+        mock_ffvoice_module.Diarizer = FailDiarizer
+
+        srv = _import_server()
+        result = srv.transcribe_file_with_diarization(str(audio_file))
+        assert "error" in result
+        assert "segmentation model missing" in result["error"]
+        assert result["segments"] == []
+        assert result["speaker_segments"] == []
+
+
+# ---------------------------------------------------------------------------
+# Tests: _diarization_pipeline.DiarizationPipeline (standalone, no mcp dep)
+# ---------------------------------------------------------------------------
+
+
+class TestDiarizationPipeline:
+    """Test DiarizationPipeline directly without importing the MCP server."""
+
+    def test_result_shape(self, mock_ffvoice_module: Any) -> None:
+        from ffvoice.mcp._diarization_pipeline import DiarizationPipeline
+
+        seg = _make_segment(start_ms=0, end_ms=1000, text="hi there")
+        seg.speaker_id = 0
+        sp = _make_speaker_segment(start_ms=0, end_ms=1000, speaker_id=0)
+
+        asr = MagicMock()
+        asr.transcribe_file.return_value = [seg]
+        asr.get_last_inference_time_ms.return_value = 99
+
+        diarizer = MagicMock()
+        diarizer.diarize.return_value = [sp]
+
+        pipeline = DiarizationPipeline(
+            asr=asr,
+            diarizer=diarizer,
+            load_fn=lambda path: ([0.0] * 16000, 16000),
+        )
+        result = pipeline.run("/fake/audio.wav")
+
+        assert "segments" in result
+        assert "speaker_segments" in result
+        assert "inference_ms" in result
+        assert "num_speakers_detected" in result
+        assert result["inference_ms"] == 99
+        assert result["num_speakers_detected"] == 1
+
+    def test_segments_carry_speaker_id(self, mock_ffvoice_module: Any) -> None:
+        from ffvoice.mcp._diarization_pipeline import DiarizationPipeline
+
+        seg = _make_segment(text="speaker two talks")
+        seg.speaker_id = 2
+        sp = _make_speaker_segment(speaker_id=2)
+
+        asr = MagicMock()
+        asr.transcribe_file.return_value = [seg]
+        asr.get_last_inference_time_ms.return_value = 10
+
+        diarizer = MagicMock()
+        diarizer.diarize.return_value = [sp]
+
+        pipeline = DiarizationPipeline(
+            asr=asr,
+            diarizer=diarizer,
+            load_fn=lambda path: ([0.0] * 100, 16000),
+        )
+        result = pipeline.run("/fake/audio.wav")
+
+        assert result["segments"][0]["speaker_id"] == 2
+
+    def test_asr_failure_raises(self, mock_ffvoice_module: Any) -> None:
+        from ffvoice.mcp._diarization_pipeline import DiarizationPipeline
+
+        asr = MagicMock()
+        asr.transcribe_file.side_effect = RuntimeError("asr exploded")
+
+        diarizer = MagicMock()
+
+        pipeline = DiarizationPipeline(
+            asr=asr,
+            diarizer=diarizer,
+            load_fn=lambda path: ([0.0] * 100, 16000),
+        )
+        with pytest.raises(RuntimeError, match="Transcription failed"):
+            pipeline.run("/fake/audio.wav")
+
+    def test_load_failure_raises(self, mock_ffvoice_module: Any) -> None:
+        from ffvoice.mcp._diarization_pipeline import DiarizationPipeline
+
+        seg = _make_segment()
+        seg.speaker_id = -1
+
+        asr = MagicMock()
+        asr.transcribe_file.return_value = [seg]
+        asr.get_last_inference_time_ms.return_value = 5
+
+        diarizer = MagicMock()
+
+        def _bad_load(path: str) -> Any:
+            raise OSError("cannot read audio")
+
+        pipeline = DiarizationPipeline(asr=asr, diarizer=diarizer, load_fn=_bad_load)
+        with pytest.raises(RuntimeError, match="Audio loading failed"):
+            pipeline.run("/fake/audio.wav")

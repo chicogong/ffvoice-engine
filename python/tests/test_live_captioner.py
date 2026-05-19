@@ -323,11 +323,13 @@ def _build_fake_ffvoice_extension() -> types.ModuleType:
     for name in (
         "Word",
         "TranscriptionSegment",
+        "SpeakerSegment",
         "AudioDeviceInfo",
         "WAVWriter",
         "FLACWriter",
         "AudioMixer",
         "RingBuffer",
+        "merge_into_segments",
     ):
         setattr(mod, name, MagicMock(name=name))
     return mod

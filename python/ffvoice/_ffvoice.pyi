@@ -83,6 +83,39 @@ class TranscriptionSegment:
     ) -> None: ...
     def __repr__(self) -> str: ...
 
+class SpeakerSegment:
+    """A diarization segment: a contiguous span attributed to one speaker."""
+
+    start_ms: int
+    """Segment start time in milliseconds."""
+    end_ms: int
+    """Segment end time in milliseconds."""
+    speaker_id: int
+    """Speaker index, 0-based; -1 = unknown."""
+
+    def __init__(
+        self,
+        start_ms: int = ...,
+        end_ms: int = ...,
+        speaker_id: int = ...,
+    ) -> None: ...
+    def __repr__(self) -> str: ...
+
+def merge_into_segments(
+    segments: list[TranscriptionSegment],
+    speakers: list[SpeakerSegment],
+) -> list[TranscriptionSegment]:
+    """
+    Assign a speaker_id to each TranscriptionSegment via temporal overlap.
+
+    For every segment, the SpeakerSegment with the largest millisecond overlap
+    wins.  Returns the annotated list of segments.
+    """
+    ...
+
+HAS_DIARIZATION: bool
+"""True when the extension was built with ENABLE_DIARIZATION=ON."""
+
 class AudioDeviceInfo:
     """Information about an audio device returned by AudioCapture.get_devices()."""
 
@@ -156,6 +189,22 @@ class RNNoiseConfig:
 
     enable_vad: bool
     """Enable VAD probability output from RNNoise."""
+
+    def __init__(self) -> None: ...
+
+class DiarizerConfig:
+    """Configuration for Diarizer (only available in ENABLE_DIARIZATION builds)."""
+
+    segmentation_model_path: str
+    """Path to the pyannote speaker-segmentation model (.onnx)."""
+    embedding_model_path: str
+    """Path to the speaker-embedding model (.onnx)."""
+    num_speakers: int
+    """Expected number of speakers; -1 = auto-detect via cluster_threshold."""
+    cluster_threshold: float
+    """Clustering distance threshold (used only when num_speakers <= 0)."""
+    num_threads: int
+    """Inference threads for the segmentation and embedding models."""
 
     def __init__(self) -> None: ...
 
@@ -309,6 +358,42 @@ class RNNoise:
 
     def get_vad_probability(self) -> float:
         """Return VAD probability from the most recent process() call (0.0 – 1.0)."""
+        ...
+
+class Diarizer:
+    """
+    Offline speaker diarization engine.
+
+    Only available when the library was built with ENABLE_DIARIZATION=ON.
+    """
+
+    def __init__(self, config: DiarizerConfig = ...) -> None: ...
+    def init(self) -> bool:
+        """Initialize the diarizer and load the models. Returns True on success."""
+        ...
+
+    def is_initialized(self) -> bool:
+        """Return True once init() has completed successfully."""
+        ...
+
+    def diarize(
+        self,
+        audio_array: np.ndarray,
+        sample_rate: int = 16000,
+    ) -> list[SpeakerSegment]:
+        """
+        Run speaker diarization on a 1-D float32 NumPy array of mono PCM samples.
+
+        Returns speaker segments sorted by start time (empty on failure).
+        """
+        ...
+
+    def get_last_error(self) -> str:
+        """Return the last error message (empty string if none)."""
+        ...
+
+    def get_expected_sample_rate(self) -> int:
+        """Return the input sample rate the models expect (Hz)."""
         ...
 
 class VADSegmenter:
