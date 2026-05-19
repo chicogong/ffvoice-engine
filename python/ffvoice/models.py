@@ -49,8 +49,7 @@ _DIARIZATION_SEG_DIRNAME = "sherpa-onnx-pyannote-segmentation-3-0"
 # 3D-Speaker speaker-embedding extractors — plain .onnx files, keyed by the
 # `embedding` argument of ensure_diarization_models().
 _DIARIZATION_EMB_RELEASE = (
-    "https://github.com/k2-fsa/sherpa-onnx/releases/download/"
-    "speaker-recongition-models/"
+    "https://github.com/k2-fsa/sherpa-onnx/releases/download/" "speaker-recongition-models/"
 )
 _DIARIZATION_EMB_MODELS = {
     # English-tuned (VoxCeleb) — the default, smallest footprint.
