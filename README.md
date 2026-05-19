@@ -1,5 +1,7 @@
 # ffvoice-engine
 
+<!-- mcp-name: io.github.chicogong/ffvoice -->
+
 <!-- Build & CI Status -->
 [![CI](https://github.com/chicogong/ffvoice-engine/workflows/CI/badge.svg)](https://github.com/chicogong/ffvoice-engine/actions/workflows/ci.yml)
 [![Release](https://github.com/chicogong/ffvoice-engine/workflows/Release/badge.svg)](https://github.com/chicogong/ffvoice-engine/actions/workflows/release.yml)
