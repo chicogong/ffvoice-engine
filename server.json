@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.chicogong/ffvoice",
+  "description": "Offline speech recognition and speaker diarization MCP server: transcribe audio files, caption live microphone input, and identify speakers — fully on-device, no cloud API.",
+  "repository": {
+    "url": "https://github.com/chicogong/ffvoice-engine",
+    "source": "github"
+  },
+  "version": "0.7.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "ffvoice",
+      "version": "0.7.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--from",
+          "value": "ffvoice[mcp]",
+          "description": "Install ffvoice with the MCP extra so the ffvoice-mcp entry point is available"
+        }
+      ]
+    }
+  ]
+}

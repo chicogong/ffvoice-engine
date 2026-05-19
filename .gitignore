@@ -23,7 +23,9 @@ CTestTestfile.cmake
 
 # IDE and editor files
 .idea/
-.claude/
+# Ignore local Claude Code state, but DO track committed project skills.
+.claude/*
+!.claude/skills/
 *.swp
 *.swo
 *~
