@@ -10,7 +10,10 @@ def test_import():
     try:
         import ffvoice
 
-        assert ffvoice.__version__ == "0.7.0"
+        # Don't hard-code the version (it changes every release) — just
+        # assert it is a sensible semver-shaped string.
+        parts = ffvoice.__version__.split(".")
+        assert len(parts) == 3 and all(p.isdigit() for p in parts)
     except ImportError as e:
         pytest.skip(f"Module not built yet: {e}")
 
