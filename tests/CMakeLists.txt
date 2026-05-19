@@ -29,7 +29,6 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/fixtures
-    ${CMAKE_CURRENT_SOURCE_DIR}/mocks
     ${CMAKE_CURRENT_SOURCE_DIR}/utils
 )
 
