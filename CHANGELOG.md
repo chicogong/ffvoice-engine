@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-05-19
+
+### 修复 / Fixed
+
+- **Python 3.13 wheels** —— 0.8.0 只发布了 cp310/311/312 的预编译包,Python 3.13 用户 `pip install ffvoice` 会回退到源码编译并失败。本版本把 3.13 加入 CI 与发布 wheel 矩阵,提供 cp313 预编译包。
+- Python 3.13 wheels — 0.8.0 shipped wheels for cp310/311/312 only, so Python 3.13 users hit a failing source build. 3.13 is now in the CI and release wheel matrix.
+
+### 已知限制 / Known limitations
+
+- 暂无 Python 3.14 预编译包(需将 pybind11 升级到 3.x,后续版本跟进)。
+
 ## [0.8.0] - 2026-05-19
 
 本版本带来**实时字幕流**与**说话人分离**两大能力,并把 ffvoice 打磨成 AI agent 开箱即用的离线语音工具。
