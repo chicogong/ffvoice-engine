@@ -38,6 +38,8 @@
 >
 > 🎙️ **离线语音识别 + 说话人分离,AI Agent 开箱即用** —— Whisper 实时转写 · 实时字幕 · MCP server · CLI · Python 绑定 · 100% 本地运行,音频不上云。
 
+![ffvoice demo — offline speech-to-text in ~12 lines of Python](docs/ffvoice-demo.gif)
+
 ---
 
 ## Why ffvoice? / 为什么用 ffvoice？
