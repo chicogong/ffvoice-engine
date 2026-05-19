@@ -58,6 +58,18 @@ Tools: `transcribe_file`, `transcribe_file_with_diarization`,
 | `--live-captions` | Live captions while recording |
 | `--list-devices` | List audio input devices |
 
+## Speaker diarization — scope & tips
+
+- The bundled speaker-embedding model is **English-tuned**. For other
+  languages, point the diarizer at a language-matched embedding model
+  (`DiarizerConfig.embedding_model_path`).
+- Automatic speaker-count detection is unreliable with several speakers.
+  When the count is known, pass `--num-speakers N` (CLI) or
+  `num_speakers=N` (MCP / Python) for materially better results.
+- Diarization quality is that of the underlying sherpa-onnx
+  pyannote-segmentation-3.0 pipeline — ffvoice wraps it faithfully and
+  does not change its accuracy.
+
 ## Privacy
 
 100% offline. Audio is processed locally and never transmitted. The only
