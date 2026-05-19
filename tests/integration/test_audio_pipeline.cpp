@@ -9,13 +9,13 @@
 #include "audio/audio_processor.h"
 #include "audio/rnnoise_processor.h"
 #include "audio/vad_segmenter.h"
-#include "media/wav_writer.h"
 #include "media/flac_writer.h"
+#include "media/wav_writer.h"
 #include "utils/signal_generator.h"
 
 #ifdef ENABLE_WHISPER
-#include "audio/whisper_processor.h"
-#include "utils/audio_converter.h"
+    #include "audio/whisper_processor.h"
+    #include "utils/audio_converter.h"
 #endif
 
 #include <gtest/gtest.h>
@@ -72,8 +72,7 @@ TEST_F(AudioPipelineTest, ProcessorChain_VolumeAndFilter) {
     chain.Process(samples.data(), samples.size());
 
     // Verify samples were processed (should be modified)
-    bool all_zero = std::all_of(samples.begin(), samples.end(),
-                                [](int16_t s) { return s == 0; });
+    bool all_zero = std::all_of(samples.begin(), samples.end(), [](int16_t s) { return s == 0; });
     EXPECT_FALSE(all_zero) << "Processed samples should not all be zero";
 }
 
@@ -99,8 +98,7 @@ TEST_F(AudioPipelineTest, ProcessorChain_WithRNNoise) {
     std::vector<int16_t> noisy_speech(speech.size());
     for (size_t i = 0; i < speech.size(); ++i) {
         noisy_speech[i] = static_cast<int16_t>(
-            std::clamp(static_cast<int32_t>(speech[i]) + noise[i],
-                       static_cast<int32_t>(INT16_MIN),
+            std::clamp(static_cast<int32_t>(speech[i]) + noise[i], static_cast<int32_t>(INT16_MIN),
                        static_cast<int32_t>(INT16_MAX)));
     }
 
@@ -108,8 +106,8 @@ TEST_F(AudioPipelineTest, ProcessorChain_WithRNNoise) {
     chain.Process(noisy_speech.data(), noisy_speech.size());
 
     // Verify samples were processed
-    bool all_zero = std::all_of(noisy_speech.begin(), noisy_speech.end(),
-                                [](int16_t s) { return s == 0; });
+    bool all_zero =
+        std::all_of(noisy_speech.begin(), noisy_speech.end(), [](int16_t s) { return s == 0; });
     EXPECT_FALSE(all_zero) << "Processed samples should not all be zero";
 }
 #endif
@@ -197,8 +195,8 @@ TEST_F(AudioPipelineTest, VADPipeline_BasicIntegration) {
     ASSERT_TRUE(rnnoise.Initialize(sample_rate, 1));
 
     // Create VAD segmenter
-    VADSegmenter::Config vad_config = VADSegmenter::Config::FromPreset(
-        VADSegmenter::Sensitivity::BALANCED);
+    VADSegmenter::Config vad_config =
+        VADSegmenter::Config::FromPreset(VADSegmenter::Sensitivity::BALANCED);
     VADSegmenter segmenter(vad_config);
 
     // Track segment callbacks

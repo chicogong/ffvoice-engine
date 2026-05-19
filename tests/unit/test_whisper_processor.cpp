@@ -6,14 +6,14 @@
 
 #ifdef ENABLE_WHISPER
 
-#include "audio/whisper_processor.h"
-#include "utils/signal_generator.h"
-#include "media/wav_writer.h"
+    #include "audio/whisper_processor.h"
+    #include "media/wav_writer.h"
+    #include "utils/signal_generator.h"
 
-#include <gtest/gtest.h>
+    #include <gtest/gtest.h>
 
-#include <cstdio>
-#include <fstream>
+    #include <cstdio>
+    #include <fstream>
 
 using namespace ffvoice;
 
@@ -39,8 +39,8 @@ protected:
 
         // Generate silence
         SignalGenerator generator;
-        std::vector<int16_t> samples = generator.GenerateSilence(
-            sample_rate * duration_ms / 1000, sample_rate);
+        std::vector<int16_t> samples =
+            generator.GenerateSilence(sample_rate * duration_ms / 1000, sample_rate);
 
         writer.WriteSamples(samples);
         writer.Close();
@@ -57,8 +57,8 @@ protected:
 
         // Generate 440Hz sine wave (simulates voice fundamental frequency)
         SignalGenerator generator;
-        std::vector<int16_t> samples = generator.GenerateSineWave(
-            440.0, duration_ms / 1000.0, sample_rate, 0.3);
+        std::vector<int16_t> samples =
+            generator.GenerateSineWave(440.0, duration_ms / 1000.0, sample_rate, 0.3);
 
         writer.WriteSamples(samples);
         writer.Close();
@@ -344,13 +344,9 @@ TEST_F(WhisperProcessorTest, ModelType_Base) {
 
 TEST_F(WhisperProcessorTest, ModelType_AllTypes) {
     // Test all model types construct successfully
-    WhisperModelType types[] = {
-        WhisperModelType::TINY,
-        WhisperModelType::BASE,
-        WhisperModelType::SMALL,
-        WhisperModelType::MEDIUM,
-        WhisperModelType::LARGE
-    };
+    WhisperModelType types[] = {WhisperModelType::TINY, WhisperModelType::BASE,
+                                WhisperModelType::SMALL, WhisperModelType::MEDIUM,
+                                WhisperModelType::LARGE};
 
     for (auto type : types) {
         WhisperConfig config;
