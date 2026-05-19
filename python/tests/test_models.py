@@ -199,3 +199,30 @@ class TestEnsureDiarizationModels:
         assert result_seg == str(seg)
         assert result_emb == str(emb)
         assert opener.calls == []  # type: ignore[attr-defined]
+
+    def test_multilingual_embedding_downloads_bilingual_model(self, tmp_path: Any) -> None:
+        """embedding='multilingual' fetches the bilingual zh+en .onnx file."""
+        cache = tmp_path / "cache"
+        archive_bytes = _make_seg_archive()
+
+        def _opener(url: str, *args: Any, **kwargs: Any) -> _FakeResponse:
+            _opener.calls.append(url)  # type: ignore[attr-defined]
+            if url.endswith(".tar.bz2"):
+                return _FakeResponse(archive_bytes)
+            return _FakeResponse(b"fake-multilingual-embedding")
+
+        _opener.calls = []  # type: ignore[attr-defined]
+
+        with patch.dict(os.environ, {"FFVOICE_CACHE_DIR": str(cache)}, clear=False):
+            with patch("urllib.request.urlopen", _opener):
+                _seg, emb = models.ensure_diarization_models(embedding="multilingual")
+
+        assert emb.endswith("3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx")
+        assert pathlib.Path(emb).read_bytes() == b"fake-multilingual-embedding"
+        # The embedding download URL must be the bilingual model.
+        assert any("zh_en" in url for url in _opener.calls)  # type: ignore[attr-defined]
+
+    def test_unknown_embedding_raises(self) -> None:
+        """An unrecognised embedding key is rejected before any download."""
+        with pytest.raises(ValueError, match="Unknown embedding model"):
+            models.ensure_diarization_models(embedding="bogus")

@@ -331,7 +331,7 @@ afplay recording.wav   # 或 recording.flac
 ./build/ffvoice --transcribe meeting.wav --diarize --num-speakers 2 --format srt -o meeting.srt
 ```
 
-> ⚠️ **说话人分离适用边界**:diarization 的 embedding 模型默认**英文调优** —— 其他语言建议改用语言匹配的 embedding 模型。已知说话人数时请传 `--num-speakers N`,自动判定数量在多说话人场景不够稳。
+> ⚠️ **说话人分离适用边界**:diarization 的 embedding 模型默认**英文调优**。中文或混合语言音频请改用内置的中英双语模型 —— 在 `transcribe_file_with_diarization` MCP 工具(或 `make_diarizer`)传 `embedding="multilingual"`,首次使用自动下载。已知说话人数时请传 `--num-speakers N`,自动判定数量在多说话人场景不够稳。
 
 ## 🐍 Python Bindings
 

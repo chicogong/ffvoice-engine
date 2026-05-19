@@ -124,9 +124,15 @@ class _SherpaOnnxDiarizer:
     ``.speaker_id`` (int).
     """
 
-    def __init__(self, num_speakers: int = -1, cluster_threshold: float = 0.5) -> None:
+    def __init__(
+        self,
+        num_speakers: int = -1,
+        cluster_threshold: float = 0.5,
+        embedding: str = "en",
+    ) -> None:
         self._num_speakers = num_speakers
         self._cluster_threshold = cluster_threshold
+        self._embedding = embedding
         self._sd: Any = None
         self._last_error: str = ""
 
@@ -137,7 +143,7 @@ class _SherpaOnnxDiarizer:
 
             from ffvoice import models
 
-            seg_path, emb_path = models.ensure_diarization_models()
+            seg_path, emb_path = models.ensure_diarization_models(self._embedding)
 
             config = sherpa_onnx.OfflineSpeakerDiarizationConfig(
                 segmentation=sherpa_onnx.OfflineSpeakerSegmentationModelConfig(
@@ -197,7 +203,11 @@ class _SherpaOnnxDiarizer:
         ]
 
 
-def make_diarizer(num_speakers: int = -1, cluster_threshold: float = 0.5) -> Any:
+def make_diarizer(
+    num_speakers: int = -1,
+    cluster_threshold: float = 0.5,
+    embedding: str = "en",
+) -> Any:
     """
     Construct a speaker diarizer, preferring the C++ backend.
 
@@ -217,6 +227,9 @@ def make_diarizer(num_speakers: int = -1, cluster_threshold: float = 0.5) -> Any
     Args:
         num_speakers: Expected speaker count, or -1 to auto-detect.
         cluster_threshold: Clustering threshold used when *num_speakers* is -1.
+        embedding: Speaker-embedding model — ``"en"`` (English, default) or
+            ``"multilingual"`` (Chinese + English). See
+            :func:`ffvoice.models.ensure_diarization_models`.
 
     Raises:
         RuntimeError: If neither diarization backend is available.
@@ -224,7 +237,7 @@ def make_diarizer(num_speakers: int = -1, cluster_threshold: float = 0.5) -> Any
     if getattr(ffvoice, "HAS_DIARIZATION", False):
         from ffvoice import models
 
-        seg_path, emb_path = models.ensure_diarization_models()
+        seg_path, emb_path = models.ensure_diarization_models(embedding)
         cfg = ffvoice.DiarizerConfig()
         cfg.num_speakers = num_speakers
         cfg.cluster_threshold = cluster_threshold
@@ -242,7 +255,7 @@ def make_diarizer(num_speakers: int = -1, cluster_threshold: float = 0.5) -> Any
             "-DENABLE_DIARIZATION=ON."
         )
 
-    return _SherpaOnnxDiarizer(num_speakers, cluster_threshold)
+    return _SherpaOnnxDiarizer(num_speakers, cluster_threshold, embedding)
 
 
 class DiarizationPipeline:

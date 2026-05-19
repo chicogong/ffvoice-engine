@@ -517,6 +517,7 @@ def transcribe_file_with_diarization(
     model: str = "base",
     num_speakers: int = -1,
     word_timestamps: bool = False,
+    embedding: str = "en",
 ) -> Dict[str, Any]:
     """
     Transcribe a local audio file and label each segment with a speaker.
@@ -541,6 +542,10 @@ def transcribe_file_with_diarization(
             auto-detect the number of speakers via clustering.
         word_timestamps: When True, each segment includes per-word timing in
             the 'words' field.
+        embedding: Speaker-embedding model — 'en' (English-tuned, default) or
+            'multilingual' (Chinese + English).  Use 'multilingual' for
+            Chinese or mixed-language audio for materially better speaker
+            separation.
 
     Returns:
         On success::
@@ -590,7 +595,7 @@ def transcribe_file_with_diarization(
     # Build a diarizer — C++ backend if compiled in, else the sherpa-onnx
     # PyPI fallback.  RuntimeError means neither backend is available.
     try:
-        diarizer = make_diarizer(num_speakers=num_speakers)
+        diarizer = make_diarizer(num_speakers=num_speakers, embedding=embedding)
     except RuntimeError as exc:
         return {"error": str(exc), "segments": [], "speaker_segments": []}
 

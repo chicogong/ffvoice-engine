@@ -21,7 +21,7 @@ Example::
         print(f"[{segment.start_ms}ms -> {segment.end_ms}ms] {segment.text}")
 """
 
-__version__ = "0.8.2"
+__version__ = "0.8.3"
 __author__ = "ffvoice-engine contributors"
 __license__ = "MIT"
 
