@@ -109,6 +109,10 @@ jobs:
   build-and-test-windows:
     name: Build and Test (Windows)
     runs-on: windows-latest
+    env:
+      # Persist vcpkg-built C++ deps (ffmpeg/portaudio/libflac) across runs.
+      # Compiling them from source costs ~30 min per job; a cache hit is seconds.
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\vcpkg-bincache
     strategy:
       fail-fast: false
       matrix:
@@ -123,10 +127,19 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Cache vcpkg binaries
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+        key: vcpkg-bincache-windows-${{ github.run_id }}
+        restore-keys: vcpkg-bincache-windows-
+
     - name: Install vcpkg and C++ dependencies
       shell: pwsh
       run: |
-        # Bootstrap vcpkg (pre-installed on windows-latest at $env:VCPKG_INSTALLATION_ROOT)
+        # Bootstrap vcpkg (pre-installed on windows-latest at $env:VCPKG_INSTALLATION_ROOT).
+        # vcpkg reads/writes prebuilt packages under VCPKG_DEFAULT_BINARY_CACHE.
+        New-Item -ItemType Directory -Force -Path $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
         $vcpkg = "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe"
         & $vcpkg install ffmpeg portaudio libflac --triplet x64-windows
         echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV

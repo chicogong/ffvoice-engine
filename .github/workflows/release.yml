@@ -28,6 +28,10 @@ jobs:
     name: Build wheels on ${{ matrix.os }} (Python ${{ matrix.python-version }})
     needs: create-release
     runs-on: ${{ matrix.os }}
+    env:
+      # Windows-only: persist vcpkg-built C++ deps across runs (see the
+      # cache step below). Harmless for the Linux/macOS matrix entries.
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\vcpkg-bincache
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]  # Linux x86_64, macOS ARM64, Windows x86_64 (all free runners)
@@ -53,10 +57,20 @@ jobs:
       run: |
         brew install ffmpeg portaudio flac cmake
 
+    - name: Cache vcpkg binaries (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+        key: vcpkg-bincache-windows-${{ github.run_id }}
+        restore-keys: vcpkg-bincache-windows-
+
     - name: Install dependencies (Windows)
       if: runner.os == 'Windows'
       run: |
-        # vcpkg is pre-installed on GitHub Actions Windows runners
+        # vcpkg is pre-installed on GitHub Actions Windows runners.
+        # vcpkg reads/writes prebuilt packages under VCPKG_DEFAULT_BINARY_CACHE.
+        New-Item -ItemType Directory -Force -Path $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
         C:\vcpkg\vcpkg install ffmpeg:x64-windows portaudio:x64-windows libflac:x64-windows
         echo "CMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" | Out-File -FilePath $env:GITHUB_ENV -Append
 
