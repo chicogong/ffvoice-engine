@@ -361,6 +361,24 @@ def mock_ffvoice_module():
     _ffvoice_pkg._HAS_DIARIZATION = True  # type: ignore[attr-defined]
     _ffvoice_pkg.merge_into_segments = lambda segs, speakers: segs  # type: ignore[attr-defined]
 
+    # Stub model auto-download so tests never hit the network.  Whisper
+    # resolution still honours FFVOICE_MODEL_PATH (so the env-var test keeps
+    # working) but never downloads; diarization model resolution returns fake
+    # paths.  Tests that need specific behaviour patch these directly.
+    import ffvoice.models as _models
+
+    def _fake_ensure_whisper(name: str = "tiny") -> str:
+        model_dir = os.environ.get("FFVOICE_MODEL_PATH", "")
+        if model_dir:
+            return os.path.join(model_dir, f"ggml-{name.lower()}.bin")
+        return ""
+
+    _models.ensure_whisper_model = _fake_ensure_whisper  # type: ignore[assignment]
+    _models.ensure_diarization_models = lambda: (  # type: ignore[assignment]
+        "/fake/seg.onnx",
+        "/fake/emb.onnx",
+    )
+
     yield _ffvoice_pkg
 
     _clear_modules()
@@ -837,20 +855,26 @@ class TestImportGuards:
 # ---------------------------------------------------------------------------
 
 
+_FAKE_DIAR_MODELS = ("/fake/seg.onnx", "/fake/emb.onnx")
+
+
 class TestTranscribeFileWithDiarization:
     def test_diarization_unavailable_returns_error(
         self, tmp_path: Any, mock_ffvoice_module: Any
     ) -> None:
-        """When HAS_DIARIZATION is False the tool returns a structured error."""
+        """When neither the C++ diarizer nor sherpa-onnx is available, the
+        tool returns a structured error instead of raising."""
         mock_ffvoice_module.HAS_DIARIZATION = False
         audio_file = tmp_path / "speech.wav"
         audio_file.write_bytes(b"\x00" * 100)
 
         srv = _import_server()
-        result = srv.transcribe_file_with_diarization(str(audio_file))
+        # Block the sherpa_onnx import so make_diarizer hits the error branch.
+        with patch.dict(sys.modules, {"sherpa_onnx": None}):
+            result = srv.transcribe_file_with_diarization(str(audio_file))
 
         assert "error" in result
-        assert "ENABLE_DIARIZATION" in result["error"]
+        assert "diarization" in result["error"].lower()
         assert result["segments"] == []
         assert result["speaker_segments"] == []
 
@@ -897,9 +921,15 @@ class TestTranscribeFileWithDiarization:
         # Import the server first (this re-imports the diarization pipeline
         # module), then patch the audio loader on the freshly imported module.
         srv = _import_server()
-        with patch(
-            "ffvoice.mcp._diarization_pipeline._default_load_audio",
-            return_value=([0.0] * 16000, 16000),
+        with (
+            patch(
+                "ffvoice.mcp._diarization_pipeline._default_load_audio",
+                return_value=([0.0] * 16000, 16000),
+            ),
+            patch(
+                "ffvoice.models.ensure_diarization_models",
+                return_value=_FAKE_DIAR_MODELS,
+            ),
         ):
             result = srv.transcribe_file_with_diarization(
                 str(audio_file), model="tiny", language="en"
@@ -930,11 +960,122 @@ class TestTranscribeFileWithDiarization:
         mock_ffvoice_module.Diarizer = FailDiarizer
 
         srv = _import_server()
-        result = srv.transcribe_file_with_diarization(str(audio_file))
+        with patch(
+            "ffvoice.models.ensure_diarization_models",
+            return_value=_FAKE_DIAR_MODELS,
+        ):
+            result = srv.transcribe_file_with_diarization(str(audio_file))
         assert "error" in result
         assert "segmentation model missing" in result["error"]
         assert result["segments"] == []
         assert result["speaker_segments"] == []
+
+
+# ---------------------------------------------------------------------------
+# Tests: make_diarizer factory (three backend-selection branches)
+# ---------------------------------------------------------------------------
+
+
+class TestMakeDiarizer:
+    """Cover the three branches of the make_diarizer() backend selector."""
+
+    def test_cpp_backend_when_has_diarization(self, mock_ffvoice_module: Any) -> None:
+        """HAS_DIARIZATION True -> returns the C++ ffvoice.Diarizer with model
+        paths set explicitly from ensure_diarization_models()."""
+        from ffvoice.mcp._diarization_pipeline import make_diarizer
+
+        mock_ffvoice_module.HAS_DIARIZATION = True
+        with patch(
+            "ffvoice.models.ensure_diarization_models",
+            return_value=("/seg/model.onnx", "/emb/model.onnx"),
+        ):
+            diarizer = make_diarizer(num_speakers=3, cluster_threshold=0.7)
+
+        assert isinstance(diarizer, _Diarizer)
+        cfg = diarizer._config
+        assert cfg.num_speakers == 3
+        assert cfg.cluster_threshold == 0.7
+        assert cfg.segmentation_model_path == "/seg/model.onnx"
+        assert cfg.embedding_model_path == "/emb/model.onnx"
+
+    def test_sherpa_fallback_when_no_cpp(self, mock_ffvoice_module: Any) -> None:
+        """HAS_DIARIZATION False but sherpa_onnx importable -> sherpa fallback."""
+        from ffvoice.mcp._diarization_pipeline import _SherpaOnnxDiarizer, make_diarizer
+
+        mock_ffvoice_module.HAS_DIARIZATION = False
+        fake_sherpa = types.ModuleType("sherpa_onnx")
+        with patch.dict(sys.modules, {"sherpa_onnx": fake_sherpa}):
+            diarizer = make_diarizer(num_speakers=2)
+
+        assert isinstance(diarizer, _SherpaOnnxDiarizer)
+        assert diarizer._num_speakers == 2
+
+    def test_runtime_error_when_neither_available(self, mock_ffvoice_module: Any) -> None:
+        """Neither backend -> RuntimeError with an actionable message."""
+        from ffvoice.mcp._diarization_pipeline import make_diarizer
+
+        mock_ffvoice_module.HAS_DIARIZATION = False
+        with patch.dict(sys.modules, {"sherpa_onnx": None}):
+            with pytest.raises(RuntimeError, match="ffvoice\\[diarization\\]"):
+                make_diarizer()
+
+    def test_sherpa_diarizer_init_and_diarize(self, mock_ffvoice_module: Any) -> None:
+        """_SherpaOnnxDiarizer.init() builds the config and diarize() converts
+        sherpa's seconds-based segments to ms-based ones."""
+        from ffvoice.mcp._diarization_pipeline import _SherpaOnnxDiarizer
+
+        # Build a fake sherpa_onnx module with just enough surface area.
+        fake = types.ModuleType("sherpa_onnx")
+
+        class _Cfg:
+            def __init__(self, **kwargs: Any) -> None:
+                self.kwargs = kwargs
+
+            def validate(self) -> bool:
+                return True
+
+        class _SegResult:
+            def __init__(self, start: float, end: float, speaker: int) -> None:
+                self.start = start
+                self.end = end
+                self.speaker = speaker
+
+        class _ProcessResult:
+            def sort_by_start_time(self) -> List[Any]:
+                return [_SegResult(0.0, 1.5, 0), _SegResult(1.5, 3.0, 1)]
+
+        class _OfflineSpeakerDiarization:
+            def __init__(self, config: Any) -> None:
+                self.sample_rate = 16000
+
+            def process(self, audio: Any) -> _ProcessResult:
+                return _ProcessResult()
+
+        fake.OfflineSpeakerDiarizationConfig = _Cfg
+        fake.OfflineSpeakerSegmentationModelConfig = _Cfg
+        fake.OfflineSpeakerSegmentationPyannoteModelConfig = _Cfg
+        fake.SpeakerEmbeddingExtractorConfig = _Cfg
+        fake.FastClusteringConfig = _Cfg
+        fake.OfflineSpeakerDiarization = _OfflineSpeakerDiarization
+
+        with (
+            patch.dict(sys.modules, {"sherpa_onnx": fake}),
+            patch(
+                "ffvoice.models.ensure_diarization_models",
+                return_value=("/seg.onnx", "/emb.onnx"),
+            ),
+        ):
+            diarizer = _SherpaOnnxDiarizer(num_speakers=2)
+            assert diarizer.init() is True
+            segments = diarizer.diarize(np.zeros(16000, dtype=np.float32), 16000)
+
+        assert len(segments) == 2
+        assert segments[0].start_ms == 0
+        assert segments[0].end_ms == 1500
+        assert segments[0].speaker_id == 0
+        assert segments[1].start_ms == 1500
+        assert segments[1].end_ms == 3000
+        assert segments[1].speaker_id == 1
 
 
 # ---------------------------------------------------------------------------

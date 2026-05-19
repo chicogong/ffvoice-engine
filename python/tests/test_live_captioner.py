@@ -702,6 +702,9 @@ class TestCaptureAndCaption:
 
         mock_ffvoice_module.LiveCaptioner = CapturingCaptioner
         model_dir = str(tmp_path)
+        # ffvoice.models.ensure_whisper_model only honours the
+        # FFVOICE_MODEL_PATH override when the model file exists there.
+        (tmp_path / "ggml-tiny.bin").write_bytes(b"\x00" * 16)
         with patch.dict(os.environ, {"FFVOICE_MODEL_PATH": model_dir}):
             srv = _import_server()
             with patch("time.sleep"):

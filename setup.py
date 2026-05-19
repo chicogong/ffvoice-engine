@@ -183,6 +183,14 @@ setup(
         "numpy>=1.20",
     ],
     extras_require={
+        "diarization": [
+            # sherpa-onnx ships all-platform wheels with ONNX Runtime
+            # bundled, so speaker diarization works from a plain
+            # `pip install` (no source build). soundfile is used by
+            # _diarization_pipeline._default_load_audio.
+            "sherpa-onnx>=1.12",
+            "soundfile>=0.12",
+        ],
         "dev": [
             "pytest>=7.0",
             "pytest-cov>=4.0",
