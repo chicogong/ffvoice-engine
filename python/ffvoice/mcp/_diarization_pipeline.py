@@ -93,6 +93,158 @@ def _default_load_audio(path: str) -> Tuple[List[float], int]:
     return samples.astype(np.float32).tolist(), int(sample_rate)
 
 
+# ---------------------------------------------------------------------------
+# Diarizer backends
+# ---------------------------------------------------------------------------
+
+
+class _SherpaSpeakerSegment:
+    """A single diarization segment in the shape the pipeline expects."""
+
+    __slots__ = ("start_ms", "end_ms", "speaker_id")
+
+    def __init__(self, start_ms: int, end_ms: int, speaker_id: int) -> None:
+        self.start_ms = start_ms
+        self.end_ms = end_ms
+        self.speaker_id = speaker_id
+
+
+class _SherpaOnnxDiarizer:
+    """
+    Speaker-diarization backend backed by the ``sherpa-onnx`` PyPI package.
+
+    This is the fallback used when ffvoice was installed from a wheel built
+    without ``ENABLE_DIARIZATION`` (so the C++ ``ffvoice.Diarizer`` is
+    absent).  ``sherpa-onnx``'s own wheels are all-platform and bundle ONNX
+    Runtime, so ``pip install 'ffvoice[diarization]'`` is enough.
+
+    It exposes the same minimal interface the pipeline uses on a diarizer:
+    ``init() -> bool`` and ``diarize(audio, sample_rate) -> list``, where each
+    returned element has ``.start_ms`` / ``.end_ms`` (int) and
+    ``.speaker_id`` (int).
+    """
+
+    def __init__(self, num_speakers: int = -1, cluster_threshold: float = 0.5) -> None:
+        self._num_speakers = num_speakers
+        self._cluster_threshold = cluster_threshold
+        self._sd: Any = None
+        self._last_error: str = ""
+
+    def init(self) -> bool:
+        """Build the underlying ``OfflineSpeakerDiarization``; return success."""
+        try:
+            import sherpa_onnx  # type: ignore
+
+            from ffvoice import models
+
+            seg_path, emb_path = models.ensure_diarization_models()
+
+            config = sherpa_onnx.OfflineSpeakerDiarizationConfig(
+                segmentation=sherpa_onnx.OfflineSpeakerSegmentationModelConfig(
+                    pyannote=sherpa_onnx.OfflineSpeakerSegmentationPyannoteModelConfig(
+                        model=seg_path
+                    ),
+                ),
+                embedding=sherpa_onnx.SpeakerEmbeddingExtractorConfig(model=emb_path),
+                clustering=sherpa_onnx.FastClusteringConfig(
+                    num_clusters=self._num_speakers,
+                    threshold=self._cluster_threshold,
+                ),
+                min_duration_on=0.3,
+                min_duration_off=0.5,
+            )
+            if not config.validate():
+                self._last_error = "sherpa-onnx diarization config failed to validate"
+                return False
+            self._sd = sherpa_onnx.OfflineSpeakerDiarization(config)
+            return True
+        except Exception as exc:  # pragma: no cover - defensive
+            self._last_error = f"sherpa-onnx diarizer init failed: {exc}"
+            return False
+
+    def get_last_error(self) -> str:
+        return self._last_error
+
+    def diarize(self, audio: Any, sample_rate: int = _TARGET_SAMPLE_RATE) -> List[Any]:
+        """
+        Run diarization over *audio* and return speaker segments.
+
+        Args:
+            audio: Mono float32 samples (anything ``np.asarray`` accepts).
+            sample_rate: Sample rate of *audio* in Hz.
+
+        Returns:
+            A list of objects with ``start_ms`` / ``end_ms`` / ``speaker_id``.
+        """
+        if self._sd is None:
+            raise RuntimeError("diarizer not initialised — call init() first")
+
+        samples = np.asarray(audio, dtype=np.float32)
+        expected = self._sd.sample_rate
+        if sample_rate != expected:
+            raise RuntimeError(
+                f"sherpa-onnx diarization expects {expected} Hz audio, got {sample_rate} Hz"
+            )
+
+        result = self._sd.process(samples).sort_by_start_time()
+        return [
+            _SherpaSpeakerSegment(
+                start_ms=int(round(r.start * 1000)),
+                end_ms=int(round(r.end * 1000)),
+                speaker_id=int(r.speaker),
+            )
+            for r in result
+        ]
+
+
+def make_diarizer(num_speakers: int = -1, cluster_threshold: float = 0.5) -> Any:
+    """
+    Construct a speaker diarizer, preferring the C++ backend.
+
+    Resolution order:
+
+    1. If ``ffvoice.HAS_DIARIZATION`` is True, use the compiled C++
+       ``ffvoice.Diarizer`` (segmentation / embedding model paths are set
+       explicitly from :func:`ffvoice.models.ensure_diarization_models`, not
+       left to compile-time defaults).
+    2. Otherwise, if the ``sherpa-onnx`` PyPI package is importable, return a
+       :class:`_SherpaOnnxDiarizer` fallback.
+    3. Otherwise raise :class:`RuntimeError`.
+
+    The returned object always exposes ``init()`` / ``diarize()`` and is ready
+    to be handed to :class:`DiarizationPipeline`.
+
+    Args:
+        num_speakers: Expected speaker count, or -1 to auto-detect.
+        cluster_threshold: Clustering threshold used when *num_speakers* is -1.
+
+    Raises:
+        RuntimeError: If neither diarization backend is available.
+    """
+    if getattr(ffvoice, "HAS_DIARIZATION", False):
+        from ffvoice import models
+
+        seg_path, emb_path = models.ensure_diarization_models()
+        cfg = ffvoice.DiarizerConfig()
+        cfg.num_speakers = num_speakers
+        cfg.cluster_threshold = cluster_threshold
+        cfg.segmentation_model_path = seg_path
+        cfg.embedding_model_path = emb_path
+        return ffvoice.Diarizer(cfg)
+
+    try:
+        import sherpa_onnx  # type: ignore  # noqa: F401
+    except ImportError:
+        raise RuntimeError(
+            "Speaker diarization is not available. Install it with "
+            "`pip install 'ffvoice[diarization]'` (pulls the sherpa-onnx "
+            "package), or build ffvoice-engine from source with "
+            "-DENABLE_DIARIZATION=ON."
+        )
+
+    return _SherpaOnnxDiarizer(num_speakers, cluster_threshold)
+
+
 class DiarizationPipeline:
     """
     Transcribe an audio file and annotate each segment with a speaker.

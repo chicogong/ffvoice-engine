@@ -13,7 +13,8 @@ from typing import Any, Dict, List, Optional
 from mcp.server.fastmcp import FastMCP
 
 import ffvoice
-from ffvoice.mcp._diarization_pipeline import DiarizationPipeline
+from ffvoice import models
+from ffvoice.mcp._diarization_pipeline import DiarizationPipeline, make_diarizer
 from ffvoice.mcp._live_caption_pipeline import LiveCaptionSession
 from ffvoice.mcp._pipeline import CaptureSession
 
@@ -45,15 +46,22 @@ _MODEL_NAME_MAP: Dict[str, Any] = {
 
 def _resolve_model_path(model_name: str) -> str:
     """
-    Return an explicit model path when FFVOICE_MODEL_PATH is set.
+    Return a local path to the Whisper ``ggml-<model_name>.bin`` weights.
 
-    If the env-var is not set, return an empty string so WhisperConfig
-    leaves model_path blank and whisper.cpp auto-locates the model.
+    Resolution is delegated to :func:`ffvoice.models.ensure_whisper_model`,
+    which honours the ``FFVOICE_MODEL_PATH`` override, returns a cached copy
+    when present, and otherwise downloads the model to the per-user cache.
+    This means transcription works from a bare ``pip install`` with no manual
+    model download.
+
+    If resolution fails (e.g. unknown model name or no network on first use),
+    an empty string is returned so WhisperConfig keeps ``model_path`` blank
+    and whisper.cpp falls back to its own auto-location.
     """
-    model_dir = os.environ.get("FFVOICE_MODEL_PATH", "")
-    if model_dir:
-        return os.path.join(model_dir, f"ggml-{model_name}.bin")
-    return ""
+    try:
+        return models.ensure_whisper_model(model_name)
+    except Exception:
+        return ""
 
 
 def _build_asr(model_name: str, language: str, word_timestamps: bool) -> ffvoice.WhisperASR:
@@ -518,8 +526,10 @@ def transcribe_file_with_diarization(
     annotated with the speaker who was talking during it.  Processing is fully
     on-device — no audio is sent anywhere.
 
-    This tool requires a build with ENABLE_DIARIZATION=ON.  When diarization is
-    unavailable it returns a structured error dict instead of raising.
+    Diarization works whenever either the compiled C++ diarizer is present
+    (source build with ENABLE_DIARIZATION=ON) or the ``sherpa-onnx`` PyPI
+    package is installed (``pip install 'ffvoice[diarization]'``).  When
+    neither is available it returns a structured error dict instead of raising.
 
     Args:
         path: Absolute or relative path to the audio file.
@@ -561,16 +571,6 @@ def transcribe_file_with_diarization(
 
             {"error": "<message>", "segments": [], "speaker_segments": []}
     """
-    if not ffvoice.HAS_DIARIZATION:
-        return {
-            "error": (
-                "Speaker diarization is not available in this build. "
-                "Rebuild ffvoice-engine with -DENABLE_DIARIZATION=ON."
-            ),
-            "segments": [],
-            "speaker_segments": [],
-        }
-
     if not os.path.exists(path):
         return {"error": f"File not found: {path}", "segments": [], "speaker_segments": []}
 
@@ -587,9 +587,13 @@ def transcribe_file_with_diarization(
     except RuntimeError as exc:
         return {"error": str(exc), "segments": [], "speaker_segments": []}
 
-    diar_config = ffvoice.DiarizerConfig()
-    diar_config.num_speakers = num_speakers
-    diarizer = ffvoice.Diarizer(diar_config)
+    # Build a diarizer — C++ backend if compiled in, else the sherpa-onnx
+    # PyPI fallback.  RuntimeError means neither backend is available.
+    try:
+        diarizer = make_diarizer(num_speakers=num_speakers)
+    except RuntimeError as exc:
+        return {"error": str(exc), "segments": [], "speaker_segments": []}
+
     if not diarizer.init():
         return {
             "error": f"Diarizer initialisation failed: {diarizer.get_last_error()}",
