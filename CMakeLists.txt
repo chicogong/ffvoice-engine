@@ -1,6 +1,6 @@
 # ffvoice-engine - Low-latency C++ voice engine
 cmake_minimum_required(VERSION 3.20)
-project(ffvoice-engine VERSION 0.8.0 LANGUAGES CXX C)
+project(ffvoice-engine VERSION 0.8.1 LANGUAGES CXX C)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 20)
