@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-05-19
+
+### 新增 / Added
+
+- **多语言说话人分离 / Multilingual speaker diarization** —— 说话人分离新增可选的中英双语 embedding 模型。`transcribe_file_with_diarization` MCP 工具与 `make_diarizer` 新增 `embedding` 参数(`"en"` 默认 / `"multilingual"`);`ensure_diarization_models(embedding=...)` 按需下载对应模型。中文及混合语言音频改用 `embedding="multilingual"` 可获得明显更好的说话人区分。
+- Multilingual speaker diarization — diarization can now use a bilingual (Chinese + English) speaker-embedding model. The `transcribe_file_with_diarization` MCP tool and `make_diarizer` gained an `embedding` argument (`"en"` default / `"multilingual"`); `ensure_diarization_models(embedding=...)` downloads the matching model on demand. English-only audio is unchanged; the default stays `"en"`.
+
 ## [0.8.2] - 2026-05-19
 
 ### 新增 / Added

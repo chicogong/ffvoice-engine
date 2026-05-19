@@ -128,7 +128,7 @@ if readme_path.exists():
 
 # Read version from pyproject.toml (single source of truth).
 # Fall back to reading __init__.py, then the hard-coded default.
-version = "0.8.2"
+version = "0.8.3"
 init_path = Path(__file__).parent / "python" / "ffvoice" / "__init__.py"
 if init_path.exists():
     with open(init_path, encoding="utf-8") as f:

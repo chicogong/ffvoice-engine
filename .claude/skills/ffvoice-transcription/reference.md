@@ -60,9 +60,11 @@ Tools: `transcribe_file`, `transcribe_file_with_diarization`,
 
 ## Speaker diarization — scope & tips
 
-- The bundled speaker-embedding model is **English-tuned**. For other
-  languages, point the diarizer at a language-matched embedding model
-  (`DiarizerConfig.embedding_model_path`).
+- The default speaker-embedding model is **English-tuned**. For Chinese
+  or mixed-language audio, select the bilingual model: pass
+  `embedding="multilingual"` to the `transcribe_file_with_diarization`
+  MCP tool (or to `ffvoice.mcp._diarization_pipeline.make_diarizer`).
+  It auto-downloads on first use, same as the English model.
 - Automatic speaker-count detection is unreliable with several speakers.
   When the count is known, pass `--num-speakers N` (CLI) or
   `num_speakers=N` (MCP / Python) for materially better results.

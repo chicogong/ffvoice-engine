@@ -46,12 +46,18 @@ _DIARIZATION_SEG_URL = (
 )
 _DIARIZATION_SEG_DIRNAME = "sherpa-onnx-pyannote-segmentation-3-0"
 
-# 3D-Speaker speaker-embedding extractor — a plain .onnx file.
-_DIARIZATION_EMB_URL = (
-    "https://github.com/k2-fsa/sherpa-onnx/releases/download/"
-    "speaker-recongition-models/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx"
+# 3D-Speaker speaker-embedding extractors — plain .onnx files, keyed by the
+# `embedding` argument of ensure_diarization_models().
+_DIARIZATION_EMB_RELEASE = (
+    "https://github.com/k2-fsa/sherpa-onnx/releases/download/" "speaker-recongition-models/"
 )
-_DIARIZATION_EMB_FILENAME = "3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx"
+_DIARIZATION_EMB_MODELS = {
+    # English-tuned (VoxCeleb) — the default, smallest footprint.
+    "en": "3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx",
+    # Bilingual Chinese + English (3D-Speaker "advanced" common model) —
+    # use this for Chinese or mixed-language audio.
+    "multilingual": "3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -175,19 +181,31 @@ def ensure_whisper_model(name: str = "tiny") -> str:
 # ---------------------------------------------------------------------------
 
 
-def ensure_diarization_models() -> Tuple[str, str]:
+def ensure_diarization_models(embedding: str = "en") -> Tuple[str, str]:
     """
     Return ``(segmentation_onnx_path, embedding_onnx_path)`` for diarization.
 
     Downloads the pyannote segmentation model (a ``.tar.bz2`` archive that
-    extracts to a directory containing ``model.onnx``) and the 3D-Speaker
-    embedding model (a plain ``.onnx`` file) into ``cache_dir()/diarization/``
-    on first use.
+    extracts to a directory containing ``model.onnx``) and a 3D-Speaker
+    speaker-embedding model (a plain ``.onnx`` file) into
+    ``cache_dir()/diarization/`` on first use.
+
+    Args:
+        embedding: Which speaker-embedding model to use — ``"en"`` (default,
+            English-tuned VoxCeleb model) or ``"multilingual"`` (a bilingual
+            Chinese + English model; use it for Chinese or mixed-language
+            audio). Each model is cached independently.
 
     Raises:
+        ValueError: If *embedding* is not a known model key.
         RuntimeError: If a download fails, or the segmentation archive does
             not contain the expected ``model.onnx``.
     """
+    if embedding not in _DIARIZATION_EMB_MODELS:
+        raise ValueError(
+            f"Unknown embedding model '{embedding}'. "
+            f"Valid values: {sorted(_DIARIZATION_EMB_MODELS)}"
+        )
     diar_dir = cache_dir() / "diarization"
     diar_dir.mkdir(parents=True, exist_ok=True)
 
@@ -209,8 +227,9 @@ def ensure_diarization_models() -> Tuple[str, str]:
             raise RuntimeError(f"Segmentation archive did not contain expected model: {seg_model}")
 
     # --- embedding model (.onnx) ---------------------------------------
-    emb_model = diar_dir / _DIARIZATION_EMB_FILENAME
+    emb_filename = _DIARIZATION_EMB_MODELS[embedding]
+    emb_model = diar_dir / emb_filename
     if not emb_model.is_file():
-        _download(_DIARIZATION_EMB_URL, emb_model)
+        _download(_DIARIZATION_EMB_RELEASE + emb_filename, emb_model)
 
     return str(seg_model), str(emb_model)
