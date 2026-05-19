@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-19
+
+本版本带来**实时字幕流**与**说话人分离**两大能力,并把 ffvoice 打磨成 AI agent 开箱即用的离线语音工具。
+
+This release adds **live caption streaming** and **speaker diarization**, and packages ffvoice as an offline speech toolkit AI agents can use out of the box.
+
+### 新增 / Added
+
+- **实时字幕流 / Live captioning** —— `LiveCaptioner` 双线程模型,partial/final 字幕事件;CLI `--live-captions` / `--partial-interval`;Python 绑定;MCP 工具 `capture_and_caption`。
+- **说话人分离 / Speaker diarization** —— `Diarizer` C++ 类封装 sherpa-onnx(pyannote 分割 + 3D-Speaker embedding + 聚类);`TranscriptionSegment.speaker_id`;CLI `--diarize` / `--num-speakers`;Python `Diarizer` 绑定;MCP 工具 `transcribe_file_with_diarization`。
+- **零门槛 diarization** —— `pip install 'ffvoice[diarization]'`:经 `sherpa-onnx` PyPI 包提供说话人分离,无需源码编译、全平台。
+- **模型自动下载** —— `ffvoice.models`:Whisper 与 diarization 模型首次使用时自动下载到 `~/.cache/ffvoice/`;不再需要手动设 `FFVOICE_MODEL_PATH`(仍保留为 override)。
+- **Claude Agent Skill** —— `.claude/skills/ffvoice-transcription/`:Claude Code 打开仓库即自动发现,教 agent 用 ffvoice 的 MCP 工具与 CLI。
+- **MCP registry 清单** —— 仓库根 `server.json`。
+
+### 变更 / Changed
+
+- README 改版:展示实时字幕、说话人分离、AI-native 集成。
+- Windows 测试套件 bring-up:MSVC 兼容、可移植临时路径、CI 加 Windows job。
+
+### 已知限制 / Known limitations
+
+- 说话人分离的 embedding 模型默认英文调优;其他语言建议改用语言匹配的 embedding 模型。
+- 自动说话人数检测在多说话人场景不够稳;已知数量时请传 `--num-speakers` / `num_speakers`。
+
 ## [0.7.0] - 2026-05-18
 
 本版本让 ffvoice 成为 **AI agent 可直接调用的离线语音工具**(agent-ready CLI + MCP server),并完成一轮可信度打磨(修复破损示例、补全文档、CI 加固、清理死代码)。
