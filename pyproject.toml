@@ -14,13 +14,21 @@ authors = [
 ]
 keywords = [
     "speech-recognition",
+    "speech-to-text",
     "asr",
     "whisper",
+    "speaker-diarization",
+    "live-captioning",
     "voice-activity-detection",
     "noise-reduction",
     "rnnoise",
     "offline-transcription",
-    "real-time-audio"
+    "real-time-audio",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "ai-agent",
+    "claude"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
