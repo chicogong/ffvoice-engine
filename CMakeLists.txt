@@ -1,6 +1,6 @@
 # ffvoice-engine - Low-latency C++ voice engine
 cmake_minimum_required(VERSION 3.20)
-project(ffvoice-engine VERSION 0.8.1 LANGUAGES CXX C)
+project(ffvoice-engine VERSION 0.8.2 LANGUAGES CXX C)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 20)
@@ -430,7 +430,7 @@ if(BUILD_PYTHON)
         FetchContent_Declare(
             pybind11
             GIT_REPOSITORY https://github.com/pybind/pybind11.git
-            GIT_TAG v2.13.6
+            GIT_TAG v3.0.4
             GIT_SHALLOW TRUE
         )
 

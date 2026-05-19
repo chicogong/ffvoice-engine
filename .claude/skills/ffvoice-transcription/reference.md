@@ -9,7 +9,7 @@ pip install 'ffvoice[mcp,diarization]'   # + speaker diarization
 ```
 
 Platforms: macOS (Apple Silicon + Intel), Linux x86_64, Windows x86_64;
-Python 3.10–3.13. The `diarization` extra works on all platforms — it pulls
+Python 3.10–3.14. The `diarization` extra works on all platforms — it pulls
 the `sherpa-onnx` package, whose wheels bundle the ONNX Runtime.
 
 ## Models — automatic
