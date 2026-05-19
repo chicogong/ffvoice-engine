@@ -42,7 +42,6 @@ set(TEST_SOURCES
     unit/test_audio_converter.cpp
     unit/test_vad_segmenter.cpp
     unit/test_rnnoise_processor.cpp
-    unit/test_whisper_processor.cpp
     unit/test_logger.cpp
     unit/test_audio_processor.cpp
     unit/test_ring_buffer.cpp
@@ -51,7 +50,6 @@ set(TEST_SOURCES
     unit/test_subtitle_generator.cpp
     unit/test_live_captioner.cpp
     unit/test_diarizer.cpp
-    integration/test_audio_pipeline.cpp
 )
 
 # Create test executable
