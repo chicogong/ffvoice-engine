@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-05-19
+
+### 新增 / Added
+
+- **Python 3.14 支持** —— pybind11 升级到 v3.0.4,3.14 加入 CI 与发布 wheel 矩阵,提供 cp314 预编译包。`pip install ffvoice` 现已覆盖 Python 3.10–3.14。
+- Python 3.14 support — pybind11 bumped to v3.0.4; 3.14 added to the CI and release wheel matrix, so cp314 wheels are now published. `pip install ffvoice` now covers Python 3.10–3.14.
+
 ## [0.8.1] - 2026-05-19
 
 ### 修复 / Fixed
