@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.chicogong/ffvoice",
-  "description": "Offline speech recognition and speaker diarization MCP server: transcribe audio files, caption live microphone input, and identify speakers — fully on-device, no cloud API.",
+  "description": "Offline speech-to-text & speaker diarization MCP server: transcribe audio on-device, no cloud",
   "repository": {
     "url": "https://github.com/chicogong/ffvoice-engine",
     "source": "github"
